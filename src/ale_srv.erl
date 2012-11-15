@@ -34,9 +34,6 @@
 -export([start_link/1, 
 	 stop/0]).
 
--export([trace/3]).
--export([trace_gl/3]).
-
 %% gen_server callbacks
 -export([init/1, 
 	 handle_call/3, 
@@ -103,61 +100,6 @@ stop() ->
 
 
 
-%%--------------------------------------------------------------------
-%% @doc
-%% Controls tracing.
-%% For details see lager documentation.
-%% @end
-%%--------------------------------------------------------------------
--type log_level() :: debug | 
-		     info | 
-		     notice | 
-		     warning | 
-		     error | 
-		     critical | 
-		     alert | 
-		     emergency.
-
--spec trace(OnOrOff:: on | off, 
-	    ModuleOrPid::atom() | string() | pid(), 
-	    Level::log_level()) -> 
-		   ok | {error, Error::term()}.
-
-trace(OnOrOff, Module, Level) 
-  when is_atom(Module), is_atom(Level), is_atom(OnOrOff) ->
-    gen_server:call(?MODULE, {trace, OnOrOff, [{module, Module}], Level, self()});
-trace(OnOrOff, Module, Level) 
-  when is_list(Module), is_atom(Level), is_atom(OnOrOff)->
-    trace(OnOrOff, list_to_atom(Module), Level);
-trace(OnOrOff, Pid, Level) 
-  when is_pid(Pid), is_atom(Level), is_atom(OnOrOff) ->
-    gen_server:call(?MODULE, {trace, OnOrOff, [{pid, Pid}], Level, self()}).
-    
-%%--------------------------------------------------------------------
-%% @doc
-%% Controls tracing.
-%% This variant uses the groupleader() instead of self() to monitor
-%% client. Suitable for calls from an erlang shell.
-%% For details see lager documentation.
-%% @end
-%%--------------------------------------------------------------------
--spec trace_gl(OnOrOff:: on | off, 
-	      ModuleOrPid::atom() | string() | pid(), 
-	      Level::log_level()) -> 
-		     ok | {error, Error::term()}.
-
-trace_gl(OnOrOff, Module, Level) 
-  when is_atom(Module), is_atom(Level), is_atom(OnOrOff) ->
-    gen_server:call(?MODULE, {trace, OnOrOff, [{module, Module}], Level, 
-			      group_leader()});
-trace_gl(OnOrOff, Module, Level) 
-  when is_list(Module), is_atom(Level), is_atom(OnOrOff)->
-    trace_gl(OnOrOff, list_to_atom(Module), Level);
-trace_gl(OnOrOff, Pid, Level) 
-  when is_pid(Pid), is_atom(Level), is_atom(OnOrOff) ->
-    gen_server:call(?MODULE, {trace, OnOrOff, [{pid, Pid}], Level, 
-			      group_leader()}).
-    
 %% Test functions
 %% @private
 dump() ->

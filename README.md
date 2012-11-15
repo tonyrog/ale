@@ -1,7 +1,7 @@
 ale
 =====
 
-ale, a [lager](https://github.com/basho/lager) extension, makes it possible for several processes to trace the same mosules.
+ale, a [lager](https://github.com/basho/lager) extension, makes it possible for several processes to trace the same modules.
 
 
 ### Dependencies
@@ -26,7 +26,13 @@ $ git clone git://github.com/tonyrog/ale.git
 ### Configurating
 #### Concepts
 
-ale extends lager. 
+ale extends lager but currently only for traces to console.
+Available api is:
+<ul>
+<li> trace(on | off, ModuleOrPid::atom() | pid(), Loglevel::atom()) - prints trace output on console as long as calling process hasn't terminated.</li>
+<li> trace_gl(on | off, ModuleOrPid::atom() | pid(), Loglevel::atom()) - prints trace output on console as long as calling process' group leader hasn't terminated. Suitable for calls from a shell.</li>
+</ul>
+See lager documentations for more details. 
 
 
 #### Files
@@ -51,7 +57,7 @@ $ rebar compile
 There is a quick way to run the application for testing:
 
 ```sh
-$ erl -sname szweb -config sys -pa <path>/ale/ebin
+$ erl -sname ale -config sys -pa <path>/ale/ebin
 >ale:start().
 ```
 (Instead of specifing the path to the ebin directory you can set the environment ERL_LIBS.)
