@@ -88,9 +88,8 @@ stop(_StartArgs) ->
 init(Args) ->
     error_logger:info_msg("~p: init: args = ~p,\n pid = ~p\n", 
 			  [?MODULE, Args, self()]),
-    Opts = proplists:get_value(options, Args, []),
     AS = ale_srv,
-    Ale = {AS, {AS, start_link, [Opts]}, permanent, 5000, worker, [AS]},
+    Ale = {AS, {AS, start_link, [Args]}, permanent, 5000, worker, [AS]},
     error_logger:info_msg("~p: About to start ~p\n", [?MODULE,Ale]),
     {ok, { {one_for_one, 0, 300}, [Ale]} }.
 

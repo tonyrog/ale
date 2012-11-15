@@ -78,13 +78,14 @@
 			ignore | 
 			{error, Error::term()}.
 
-start_link(Options) ->
-    ?dbg("start_link: starting, args ~p",[Options]),
-    F =	case proplists:get_value(linked,Options,true) of
+start_link(Args) ->
+    ?dbg("start_link: starting, args ~p",[Args]),
+    Opts = proplists:get_value(options, Args, []),    
+    F =	case proplists:get_value(linked,Opts,true) of
 	    true -> start_link;
 	    false -> start
 	end,
-    gen_server:F({local, ?MODULE}, ?MODULE, [], []).
+    gen_server:F({local, ?MODULE}, ?MODULE, Args, []).
 
 
 %%--------------------------------------------------------------------
@@ -121,9 +122,17 @@ debug(TrueOrFalse) ->
 		  {stop, Reason::term()}.
 
 init(Args) ->
-    {ok,Debug} = set_debug(proplists:get_value(debug, Args, false), undefined),
-    ?dbg("init:started",[]),
-    {ok,  #ctx {debug = Debug}}.
+    Opts = proplists:get_value(options, Args, []),    
+    {ok,Debug} = set_debug(proplists:get_value(debug, Opts, false), undefined),
+    ?dbg("init: args ~p",[Args]),
+    InitTraces = proplists:get_value(init_traces, Args, []),
+    TL = 
+	lists:foldl(fun({Filter, Level}, TraceList) ->
+			    add_trace({Filter, Level, lager_console_backend},
+				      self(), TraceList)
+		    end,
+		    [], InitTraces),
+    {ok,  #ctx {debug = Debug, trace_list = TL}}.
 
 
 %%--------------------------------------------------------------------
@@ -444,16 +453,16 @@ remove_traces(Client, [Item | RestTL], NewTL) ->
 stop_debug(undefined) ->
     undefined;
 stop_debug(Dbg) ->
-    lager:stop_debug(Dbg),
+    lager:stop_trace(Dbg),
     undefined.
 
-%% enable/disable module debug debug
+%% enable/disable module debug 
 set_debug(false, Dbg) ->
     NewDbg = stop_debug(Dbg),
     lager:set_loglevel(lager_console_backend, info),
     {ok, NewDbg};
 set_debug(true, undefined) ->
-    lager:debug_console([{module,?MODULE}], debug);
+    lager:trace_console([{module,?MODULE}], debug);
 set_debug(true, Dbg) -> 
     {ok, Dbg}.
 
