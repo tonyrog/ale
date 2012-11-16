@@ -40,6 +40,8 @@
 %% Application API
 -export([trace/3]).
 -export([trace_gl/3]).
+-export([trace/4]).
+-export([trace_gl/4]).
 
 -define(SRV, ale_srv).
 
@@ -86,12 +88,6 @@ start(_StartType, _StartArgs) ->
 stop(_State) ->
     exit(stopped).
 
-%%--------------------------------------------------------------------
-%% @doc
-%% Controls tracing.
-%% For details see lager documentation.
-%% @end
-%%--------------------------------------------------------------------
 -type log_level() :: debug | 
 		     info | 
 		     notice | 
@@ -101,26 +97,55 @@ stop(_State) ->
 		     alert | 
 		     emergency.
 
+%%--------------------------------------------------------------------
+%% @doc
+%% Controls tracing.
+%% For details see lager documentation.
+%% @end
+%%--------------------------------------------------------------------
 -spec trace(OnOrOff:: on | off, 
-	    ModuleOrPid::atom() | string() | pid() | tuple() | list(tuple()), 
+	    ModuleOrPidOrFilter::atom() | 
+				 string() | 
+				 pid() | 
+				 tuple() | 
+				 list(tuple()), 
 	    Level::log_level()) -> 
 		   ok | {error, Error::term()}.
 
-trace(OnOrOff, Module, Level) 
-  when is_atom(OnOrOff), is_atom(Module), is_atom(Level) ->
-    gen_server:call(?SRV, {trace, OnOrOff, [{module, Module}], Level, self()});
-trace(OnOrOff, Module, Level) 
-  when is_atom(OnOrOff), is_list(Module), is_atom(Level)->
-    trace(OnOrOff, list_to_atom(Module), Level);
-trace(OnOrOff, Pid, Level) 
-  when is_atom(OnOrOff), is_pid(Pid), is_atom(Level) ->
-    gen_server:call(?SRV, {trace, OnOrOff, [{pid, pid_to_list(Pid)}], Level, self()});
-trace(OnOrOff, Filter, Level) 
-  when is_atom(OnOrOff), is_tuple(Filter),is_atom(Level) ->
-    gen_server:call(?SRV, {trace, OnOrOff, [Filter], Level, self()});
-trace(OnOrOff, FilterList, Level) 
-  when is_atom(OnOrOff), is_list(FilterList),is_atom(Level) ->
-    gen_server:call(?SRV, {trace, OnOrOff, FilterList, Level, self()}).
+trace(OnOrOff, ModulOrPidOrFilter, Level) ->
+    trace(OnOrOff, ModulOrPidOrFilter, Level, "_console").
+        
+%%--------------------------------------------------------------------
+%% @doc
+%% Controls tracing.
+%% For details see lager documentation.
+%% @end
+%%--------------------------------------------------------------------
+-spec trace(OnOrOff:: on | off, 
+	    ModuleOrPidOrFilter::atom() | 
+				 string() | 
+				 pid() | 
+				 tuple() | 
+				 list(tuple()), 
+	    Level::log_level(),
+	    File::string()) -> 
+		   ok | {error, Error::term()}.
+
+trace(OnOrOff, Module, Level, File) 
+  when is_atom(OnOrOff), is_atom(Module), is_atom(Level), is_list(File) ->
+    call({trace, OnOrOff, [{module, Module}], Level, self(), File});
+trace(OnOrOff, Module, Level, File) 
+  when is_atom(OnOrOff), is_list(Module), is_atom(Level), is_list(File)->
+    trace(OnOrOff, list_to_atom(Module), Level, File);
+trace(OnOrOff, Pid, Level, File) 
+  when is_atom(OnOrOff), is_pid(Pid), is_atom(Level), is_list(File) ->
+    call({trace, OnOrOff, [{pid, pid_to_list(Pid)}], Level, self(), File});
+trace(OnOrOff, Filter, Level, File) 
+  when is_atom(OnOrOff), is_tuple(Filter),is_atom(Level), is_list(File) ->
+    call({trace, OnOrOff, [Filter], Level, self(), File});
+trace(OnOrOff, FilterList, Level, File) 
+  when is_atom(OnOrOff), is_list(FilterList),is_atom(Level), is_list(File) ->
+    call({trace, OnOrOff, FilterList, Level, self(), File}).
     
 %%--------------------------------------------------------------------
 %% @doc
@@ -131,28 +156,64 @@ trace(OnOrOff, FilterList, Level)
 %% @end
 %%--------------------------------------------------------------------
 -spec trace_gl(OnOrOff:: on | off, 
-	      ModuleOrPid::atom() | string() | pid() | tuple() | list(tuple()), 
+	      ModuleOrPidOrFilter::atom() | 
+				   string() | 
+				   pid() | 
+				   tuple() | 
+				   list(tuple()), 
 	      Level::log_level()) -> 
 		     ok | {error, Error::term()}.
 
-trace_gl(OnOrOff, Module, Level) 
-  when is_atom(OnOrOff), is_atom(Module), is_atom(Level) ->
-    gen_server:call(?SRV, {trace, OnOrOff, [{module, Module}], Level, 
-			      group_leader()});
-trace_gl(OnOrOff, Module, Level) 
-  when is_atom(OnOrOff), is_list(Module), is_atom(Level)->
-    trace_gl(OnOrOff, list_to_atom(Module), Level);
-trace_gl(OnOrOff, Pid, Level) 
-  when is_atom(OnOrOff), is_pid(Pid), is_atom(Level) ->
-    gen_server:call(?SRV, {trace, OnOrOff, [{pid, pid_to_list(Pid)}], Level, 
-			      group_leader()});
-trace_gl(OnOrOff, Filter, Level) 
-  when is_atom(OnOrOff), is_tuple(Filter),is_atom(Level) ->
-    gen_server:call(?SRV, {trace, OnOrOff, [Filter], Level, group_leader()});
-trace_gl(OnOrOff, FilterList, Level) 
-  when is_atom(OnOrOff), is_list(FilterList),is_atom(Level) ->
-    gen_server:call(?SRV, {trace, OnOrOff, FilterList, Level, group_leader()}).
+trace_gl(OnOrOff, Module, Level) ->
+  trace_gl(OnOrOff, Module, Level, "_console").
+
+%%--------------------------------------------------------------------
+%% @doc
+%% Controls tracing.
+%% This variant uses the groupleader() instead of self() to monitor
+%% client. Suitable for calls from an erlang shell.
+%% For details see lager documentation.
+%% @end
+%%--------------------------------------------------------------------
+-spec trace_gl(OnOrOff:: on | off, 
+	       ModuleOrPidOrFilter::atom() | 
+				    string() | 
+				    pid() | 
+				    tuple() | 
+				    list(tuple()), 
+	       Level::log_level(),
+	       File::string()) -> 
+		     ok | {error, Error::term()}.
+
+trace_gl(OnOrOff, Module, Level, File) 
+  when is_atom(OnOrOff), is_atom(Module), is_atom(Level), is_list(File) ->
+    call({trace, OnOrOff, [{module, Module}], Level,  group_leader(), File});
+trace_gl(OnOrOff, Module, Level, File) 
+  when is_atom(OnOrOff), is_list(Module), is_atom(Level), is_list(File) ->
+    trace_gl(OnOrOff, list_to_atom(Module), Level, File);
+trace_gl(OnOrOff, Pid, Level, File) 
+  when is_atom(OnOrOff), is_pid(Pid), is_atom(Level), is_list(File) ->
+    call({trace, OnOrOff, [{pid, pid_to_list(Pid)}], Level, 
+	  group_leader(), File});
+trace_gl(OnOrOff, Filter, Level, File) 
+  when is_atom(OnOrOff), is_tuple(Filter), is_atom(Level), is_list(File) ->
+    call({trace, OnOrOff, [Filter], Level,  group_leader(), File});
+trace_gl(OnOrOff, FilterList, Level, File) 
+  when is_atom(OnOrOff), is_list(FilterList), is_atom(Level), is_list(File) ->
+    call({trace, OnOrOff, FilterList, Level, group_leader(), File}).
     
+
+call({trace, _OnOrOff, _FilterList, _Level, _Client, "_console"} = Trace) ->
+    gen_server:call(?SRV, Trace);
+call({trace, _OnOrOff, _FilterList, _Level, _Client, File} = Trace) ->
+    %% Do we want this check ??
+    case filelib:is_regular(File) of
+	true ->
+	    gen_server:call(?SRV, Trace);
+	false ->
+	    {error, non_existing_file}
+    end.
+
 %% @private
 start() ->
     call([sasl, lager, ale],start).

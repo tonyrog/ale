@@ -44,6 +44,7 @@
 %% Testing
 -export([dump/0]).
 -export([debug/1]).
+-export([clear/0]).
 
 -record(trace_item,
 	{
@@ -109,6 +110,9 @@ dump() ->
 debug(TrueOrFalse) ->
     gen_server:call(?MODULE, {debug, TrueOrFalse}).
 
+clear() ->
+    gen_server:call(?MODULE, clear).
+
 
 %%--------------------------------------------------------------------
 %% @private
@@ -128,8 +132,20 @@ init(Args) ->
     InitTraces = proplists:get_value(init_traces, Args, []),
     TL = 
 	lists:foldl(fun({Filter, Level}, TraceList) ->
-			    add_trace({Filter, Level, lager_console_backend},
-				      self(), TraceList)
+			    add_trace({Filter, Level, "_console"},
+				      self(), TraceList);
+		       ({Filter, Level, File}, TraceList) ->
+			    %% Do we want this check ??
+			    case filelib:is_regular(File) of
+				true ->
+				    add_trace({Filter, Level, File},
+					      self(), TraceList);
+				false ->
+				    error_logger:error_msg(
+				      "ale: non existing file ~p, " ++
+				      "no trace added.~n", [File]),
+				    TraceList
+			    end
 		    end,
 		    [], InitTraces),
     {ok,  #ctx {debug = Debug, trace_list = TL}}.
@@ -155,6 +171,8 @@ init(Args) ->
 	 Level::atom(), 
 	 Pid::pid()} |
 	dump |
+	{debug, TrueOrFalse::boolean()} |
+	clear |
 	stop.
 
 -spec handle_call(Request::call_request(), From::reference(), Ctx::#ctx{}) ->
@@ -163,19 +181,19 @@ init(Args) ->
 			 {stop, Reason::atom(), Reply::term(), Ctx::#ctx{}}.
 
 
-handle_call({trace, on, Filter, Level, Client} = _T, _From, 
+handle_call({trace, on, Filter, Level, Client, File} = _T, _From, 
 	    Ctx=#ctx {trace_list = TL, client_list = CL}) 
   when is_list(Filter) ->
     ?dbg("handle_call: trace on ~p.",[_T]),
-    NewTL = add_trace({Filter, Level, lager_console_backend}, Client, TL),
+    NewTL = add_trace({Filter, Level, File}, Client, TL),
     NewCL = monitor_client(Client, CL),
     {reply, ok, Ctx#ctx {trace_list = NewTL, client_list = NewCL}};
      
-handle_call({trace, off, Filter, Level, Client} = _T, _From, 
+handle_call({trace, off, Filter, Level, Client, File} = _T, _From, 
 	    Ctx=#ctx {trace_list = TL, client_list = CL}) 
   when is_list(Filter) ->
     ?dbg("handle_call: trace off ~p.",[_T]),
-    NewTL = remove_trace({Filter, Level, lager_console_backend}, Client, TL),
+    NewTL = remove_trace({Filter, Level, File}, Client, TL),
     NewCL = demonitor_client(Client, NewTL, CL),
     {reply, ok, Ctx#ctx {trace_list = NewTL, client_list = NewCL}};
      
@@ -193,6 +211,18 @@ handle_call({debug, TrueOrFalse}, _From, Ctx=#ctx {debug = Dbg}) ->
 	Error ->
 	    {reply, Error, Ctx}
     end;
+
+handle_call(clear, _From, Ctx=#ctx {trace_list = TL, client_list = CL}) ->
+    lists:foldl(fun(#trace_item {trace = Trace, client = Client}, Rest) ->
+			remove_trace(Trace, Client, TL),
+			Rest
+		end, [], TL),
+    ?dbg("clear: traces removed.",[]),
+    lists:foreach(fun( #client_item {monitor = Mon}) ->
+			  erlang:demonitor(Mon, [flush])
+		  end, CL),
+    ?dbg("clear: clients removed.",[]),
+    {reply, ok, Ctx#ctx {trace_list = [], client_list = []}};
 
 handle_call(stop, _From, Ctx) ->
     ?dbg("handle_call: stop.",[]),
@@ -301,18 +331,24 @@ code_change(_OldVsn, Ctx, _Extra) ->
 %%--------------------------------------------------------------------
 %% @private
 %%--------------------------------------------------------------------
--spec add_trace({Filter::term(), Level::atom(), lager_console_backend},
+-spec add_trace({Filter::term(), Level::atom(), File::string()},
 		Client::pid(), TL::list(tuple())) ->
 		       list(tuple()).
 
-add_trace(Trace = {Filter, Level, lager_console_backend}, Client, TL) -> 
+add_trace(Trace = {Filter, Level, File}, Client, TL) -> 
     %% See if we already are tracing this.
     ?dbg("add_trace: trace ~p for client ~p",[Trace, Client]),
     case lists:keyfind(Trace, #trace_item.trace, TL) of
 	false ->
 	    %% Create new trace in lager
 	    ?dbg("add_trace: trace ~p not found.",[Trace]),
-	    {ok, LagerRef} = lager:trace_console(Filter, Level),
+	    {ok, LagerRef} = 
+		case File of
+		    "_console" ->
+			lager:trace_console(Filter, Level);
+		    _F ->
+			lager:trace_file(File, Filter,Level)
+		end,
 	    ?dbg("add_trace: trace added in lager, ref ~p.",[LagerRef]),
 	    [#trace_item {trace = Trace, lager_ref = LagerRef, client = Client}
 	     | TL];
@@ -331,7 +367,7 @@ add_trace(Trace = {Filter, Level, lager_console_backend}, Client, TL) ->
 %%--------------------------------------------------------------------
 %% @private
 %%--------------------------------------------------------------------
--spec remove_trace({Filter::term(), Level::atom(), lager_console_backend},
+-spec remove_trace({Filter::term(), Level::atom(), File::string()},
 		Client::pid(), TL::list(tuple())) ->
 		       list(tuple()).
 
