@@ -123,7 +123,6 @@ trace(OnOrOff, ModulOrPidOrFilter, Level) ->
 %%--------------------------------------------------------------------
 -spec trace(OnOrOff:: on | off, 
 	    ModuleOrPidOrFilter::atom() | 
-				 string() | 
 				 pid() | 
 				 tuple() | 
 				 list(tuple()), 
@@ -134,9 +133,6 @@ trace(OnOrOff, ModulOrPidOrFilter, Level) ->
 trace(OnOrOff, Module, Level, File) 
   when is_atom(OnOrOff), is_atom(Module), is_atom(Level), is_list(File) ->
     call({trace, OnOrOff, [{module, Module}], Level, self(), File});
-trace(OnOrOff, Module, Level, File) 
-  when is_atom(OnOrOff), is_list(Module), is_atom(Level), is_list(File)->
-    trace(OnOrOff, list_to_atom(Module), Level, File);
 trace(OnOrOff, Pid, Level, File) 
   when is_atom(OnOrOff), is_pid(Pid), is_atom(Level), is_list(File) ->
     call({trace, OnOrOff, [{pid, pid_to_list(Pid)}], Level, self(), File});
@@ -177,7 +173,6 @@ trace_gl(OnOrOff, Module, Level) ->
 %%--------------------------------------------------------------------
 -spec trace_gl(OnOrOff:: on | off, 
 	       ModuleOrPidOrFilter::atom() | 
-				    string() | 
 				    pid() | 
 				    tuple() | 
 				    list(tuple()), 
@@ -188,9 +183,6 @@ trace_gl(OnOrOff, Module, Level) ->
 trace_gl(OnOrOff, Module, Level, File) 
   when is_atom(OnOrOff), is_atom(Module), is_atom(Level), is_list(File) ->
     call({trace, OnOrOff, [{module, Module}], Level,  group_leader(), File});
-trace_gl(OnOrOff, Module, Level, File) 
-  when is_atom(OnOrOff), is_list(Module), is_atom(Level), is_list(File) ->
-    trace_gl(OnOrOff, list_to_atom(Module), Level, File);
 trace_gl(OnOrOff, Pid, Level, File) 
   when is_atom(OnOrOff), is_pid(Pid), is_atom(Level), is_list(File) ->
     call({trace, OnOrOff, [{pid, pid_to_list(Pid)}], Level, 
