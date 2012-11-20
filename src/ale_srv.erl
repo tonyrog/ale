@@ -175,7 +175,9 @@ init(Args) ->
 	clear |
 	stop.
 
--spec handle_call(Request::call_request(), From::reference(), Ctx::#ctx{}) ->
+-spec handle_call(Request::call_request(), 
+		  From::{pid(), Tag::term()}, 
+		  Ctx::#ctx{}) ->
 			 {reply, Reply::term(), Ctx::#ctx{}} |
 			 {noreply, Ctx::#ctx{}} |
 			 {stop, Reason::atom(), Reply::term(), Ctx::#ctx{}}.
