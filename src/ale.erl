@@ -42,6 +42,8 @@
 -export([trace_gl/3]).
 -export([trace/4]).
 -export([trace_gl/4]).
+-export([traces/0]).
+-export([clients/0]).
 
 -define(SRV, ale_srv).
 
@@ -86,7 +88,7 @@ start(_StartType, _StartArgs) ->
 -spec stop(State::term()) -> ok | {error, Error::term()}.
 
 stop(_State) ->
-    exit(stopped).
+    ok.
 
 -type log_level() :: debug | 
 		     info | 
@@ -113,7 +115,7 @@ stop(_State) ->
 		   ok | {error, Error::term()}.
 
 trace(OnOrOff, ModulOrPidOrFilter, Level) ->
-    trace(OnOrOff, ModulOrPidOrFilter, Level, "_console").
+    trace(OnOrOff, ModulOrPidOrFilter, Level, console).
         
 %%--------------------------------------------------------------------
 %% @doc
@@ -127,20 +129,20 @@ trace(OnOrOff, ModulOrPidOrFilter, Level) ->
 				 tuple() | 
 				 list(tuple()), 
 	    Level::log_level(),
-	    File::string()) -> 
+	    File::string() | console) -> 
 		   ok | {error, Error::term()}.
 
 trace(OnOrOff, Module, Level, File) 
-  when is_atom(OnOrOff), is_atom(Module), is_atom(Level), is_list(File) ->
+  when is_atom(OnOrOff), is_atom(Module), is_atom(Level) ->
     call({trace, OnOrOff, [{module, Module}], Level, self(), File});
 trace(OnOrOff, Pid, Level, File) 
-  when is_atom(OnOrOff), is_pid(Pid), is_atom(Level), is_list(File) ->
+  when is_atom(OnOrOff), is_pid(Pid), is_atom(Level) ->
     call({trace, OnOrOff, [{pid, pid_to_list(Pid)}], Level, self(), File});
 trace(OnOrOff, Filter, Level, File) 
-  when is_atom(OnOrOff), is_tuple(Filter),is_atom(Level), is_list(File) ->
+  when is_atom(OnOrOff), is_tuple(Filter),is_atom(Level) ->
     call({trace, OnOrOff, [Filter], Level, self(), File});
 trace(OnOrOff, FilterList, Level, File) 
-  when is_atom(OnOrOff), is_list(FilterList),is_atom(Level), is_list(File) ->
+  when is_atom(OnOrOff), is_list(FilterList),is_atom(Level) ->
     call({trace, OnOrOff, FilterList, Level, self(), File}).
     
 %%--------------------------------------------------------------------
@@ -161,7 +163,7 @@ trace(OnOrOff, FilterList, Level, File)
 		     ok | {error, Error::term()}.
 
 trace_gl(OnOrOff, Module, Level) ->
-  trace_gl(OnOrOff, Module, Level, "_console").
+  trace_gl(OnOrOff, Module, Level, console).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -177,27 +179,28 @@ trace_gl(OnOrOff, Module, Level) ->
 				    tuple() | 
 				    list(tuple()), 
 	       Level::log_level(),
-	       File::string()) -> 
+	       File::string() | console) -> 
 		     ok | {error, Error::term()}.
 
 trace_gl(OnOrOff, Module, Level, File) 
-  when is_atom(OnOrOff), is_atom(Module), is_atom(Level), is_list(File) ->
+  when is_atom(OnOrOff), is_atom(Module), is_atom(Level) ->
     call({trace, OnOrOff, [{module, Module}], Level,  group_leader(), File});
 trace_gl(OnOrOff, Pid, Level, File) 
-  when is_atom(OnOrOff), is_pid(Pid), is_atom(Level), is_list(File) ->
+  when is_atom(OnOrOff), is_pid(Pid), is_atom(Level) ->
     call({trace, OnOrOff, [{pid, pid_to_list(Pid)}], Level, 
 	  group_leader(), File});
 trace_gl(OnOrOff, Filter, Level, File) 
-  when is_atom(OnOrOff), is_tuple(Filter), is_atom(Level), is_list(File) ->
+  when is_atom(OnOrOff), is_tuple(Filter), is_atom(Level) ->
     call({trace, OnOrOff, [Filter], Level,  group_leader(), File});
 trace_gl(OnOrOff, FilterList, Level, File) 
-  when is_atom(OnOrOff), is_list(FilterList), is_atom(Level), is_list(File) ->
+  when is_atom(OnOrOff), is_list(FilterList), is_atom(Level) ->
     call({trace, OnOrOff, FilterList, Level, group_leader(), File}).
     
 
-call({trace, _OnOrOff, _FilterList, _Level, _Client, "_console"} = Trace) ->
+call({trace, _OnOrOff, _FilterList, _Level, _Client, console} = Trace) ->
     gen_server:call(?SRV, Trace);
-call({trace, _OnOrOff, _FilterList, _Level, _Client, File} = Trace) ->
+call({trace, _OnOrOff, _FilterList, _Level, _Client, File} = Trace) 
+  when is_list(File) ->
     %% Do we want this check ??
     case filelib:is_regular(File) of
 	true ->
@@ -206,24 +209,58 @@ call({trace, _OnOrOff, _FilterList, _Level, _Client, File} = Trace) ->
 	    {error, non_existing_file}
     end.
 
+%%--------------------------------------------------------------------
+%% @doc
+%% Lists existing traces.
+%% @end
+%%--------------------------------------------------------------------
+-spec traces() -> list(tuple()).
+
+traces() ->
+    gen_server:call(?SRV, traces).
+
+%%--------------------------------------------------------------------
+%% @doc
+%% Lists existing clients.
+%% @end
+%%--------------------------------------------------------------------
+-spec clients() -> list(tuple()).
+
+clients() ->
+    gen_server:call(?SRV, clients).
+
+
+
+%%--------------------------------------------------------------------
+%% Test functions
+%%--------------------------------------------------------------------
 %% @private
 start() ->
-    call([sasl, lager, ale],start).
+    app_ctrl([kernel, stdlib, compiler, syntax_tools, sasl, lager, ale],start).
 
 stop() ->
-    call([ale, lager],stop).
+    app_ctrl([ale, lager],stop).
 
-call([], _F) ->
+%%--------------------------------------------------------------------
+%% Internal functions
+%%--------------------------------------------------------------------
+%% @private
+app_ctrl([], _F) ->
     ok;
-call([App|Apps], F) ->
+app_ctrl([App|Apps], F) ->
     error_logger:info_msg("~p: ~p\n", [F,App]),
     case application:F(App) of
 	{error,{not_started,App1}} ->
-	    call([App1,App|Apps], F);
+	    case F of
+		start ->
+		    app_ctrl([App1,App|Apps], F);
+		stop ->
+		    app_ctrl(Apps, F)
+	    end;
 	{error,{already_started,App}} ->
-	    call(Apps, F);
+	    app_ctrl(Apps, F);
 	ok ->
-	    call(Apps, F);
+	    app_ctrl(Apps, F);
 	Error ->
 	    Error
     end.

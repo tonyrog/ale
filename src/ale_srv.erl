@@ -41,7 +41,9 @@
 	 handle_info/2,
 	 terminate/2, 
 	 code_change/3]).
+
 %% Testing
+-export([start/0, start/1]).
 -export([dump/0]).
 -export([debug/1]).
 -export([clear/0]).
@@ -104,6 +106,11 @@ stop() ->
 
 %% Test functions
 %% @private
+start() ->
+    start([]).
+start(Args) ->
+    gen_server:start({local, ?MODULE}, ?MODULE, Args, []).
+
 dump() ->
     gen_server:call(?MODULE, dump).
 
@@ -132,14 +139,18 @@ init(Args) ->
     InitTraces = proplists:get_value(init_traces, Args, []),
     TL = 
 	lists:foldl(fun({Filter, Level}, TraceList) ->
-			    add_trace({Filter, Level, "_console"},
-				      self(), TraceList);
+			    {_Result, TmpL} =
+				add_trace({Filter, Level, console},
+					  self(), TraceList),
+			    TmpL;
 		       ({Filter, Level, File}, TraceList) ->
 			    %% Do we want this check ??
 			    case filelib:is_regular(File) of
 				true ->
-				    add_trace({Filter, Level, File},
-					      self(), TraceList);
+				    {_Result, TmpL} =
+					add_trace({Filter, Level, File},
+						  self(), TraceList),
+				    TmpL;
 				false ->
 				    error_logger:error_msg(
 				      "ale: non existing file ~p, " ++
@@ -187,17 +198,31 @@ handle_call({trace, on, Filter, Level, Client, File} = _T, _From,
 	    Ctx=#ctx {trace_list = TL, client_list = CL}) 
   when is_list(Filter) ->
     ?dbg("handle_call: trace on ~p.",[_T]),
-    NewTL = add_trace({Filter, Level, File}, Client, TL),
-    NewCL = monitor_client(Client, CL),
-    {reply, ok, Ctx#ctx {trace_list = NewTL, client_list = NewCL}};
-     
+    case add_trace({Filter, Level, File}, Client, TL) of
+	{ok, NewTL} -> 
+	    NewCL = monitor_client(Client, CL),
+	    {reply, ok, Ctx#ctx {trace_list = NewTL, client_list = NewCL}};
+	{Error, TL} ->
+	    {reply, Error, Ctx}
+    end;
 handle_call({trace, off, Filter, Level, Client, File} = _T, _From, 
 	    Ctx=#ctx {trace_list = TL, client_list = CL}) 
   when is_list(Filter) ->
     ?dbg("handle_call: trace off ~p.",[_T]),
-    NewTL = remove_trace({Filter, Level, File}, Client, TL),
-    NewCL = demonitor_client(Client, NewTL, CL),
-    {reply, ok, Ctx#ctx {trace_list = NewTL, client_list = NewCL}};
+    case remove_trace({Filter, Level, File}, Client, TL) of
+	{ok, NewTL} -> 
+	    NewCL = demonitor_client(Client, NewTL, CL),
+	    {reply, ok, Ctx#ctx {trace_list = NewTL, client_list = NewCL}};
+	{E, TL} ->
+	    {reply, E, Ctx}
+    end;
+handle_call(traces, _From,  Ctx=#ctx {trace_list = TL})  ->
+    ?dbg("handle_call: traces.",[]),
+    {reply, TL, Ctx};
+     
+handle_call(clients, _From,  Ctx=#ctx {client_list = CL})  ->
+    ?dbg("handle_call: clients.",[]),
+    {reply, CL, Ctx};
      
 handle_call(dump, _From, Ctx=#ctx {trace_list = TL}) ->
     lists:foreach(fun(#trace_item {client = C, trace = T, lager_ref = LR}) ->
@@ -333,7 +358,7 @@ code_change(_OldVsn, Ctx, _Extra) ->
 %%--------------------------------------------------------------------
 %% @private
 %%--------------------------------------------------------------------
--spec add_trace({Filter::term(), Level::atom(), File::string()},
+-spec add_trace({Filter::term(), Level::atom(), File::string() | console},
 		Client::pid(), TL::list(tuple())) ->
 		       list(tuple()).
 
@@ -344,26 +369,36 @@ add_trace(Trace = {Filter, Level, File}, Client, TL) ->
 	false ->
 	    %% Create new trace in lager
 	    ?dbg("add_trace: trace ~p not found.",[Trace]),
-	    {ok, LagerRef} = 
+	    Res = 
 		case File of
-		    "_console" ->
+		    console ->
 			lager:trace_console(Filter, Level);
 		    _F ->
 			lager:trace_file(File, Filter,Level)
 		end,
-	    ?dbg("add_trace: trace added in lager, ref ~p.",[LagerRef]),
-	    [#trace_item {trace = Trace, lager_ref = LagerRef, client = Client}
-	     | TL];
+	    case Res of
+		{ok, LagerRef} ->
+		    ?dbg("add_trace: trace added in lager, ref ~p.",[LagerRef]),
+		    {ok, 
+		     [#trace_item {trace = Trace,  
+				   lager_ref = LagerRef, 
+				  client = Client}
+		      | TL]};
+		{error, _Reason}  = E->
+		    ?dbg("add_trace: lager call failed, reason ~p.",[_Reason]),
+		    {E, TL}
+	    end;
 	#trace_item {trace = Trace, client = Client} ->
 	    %% Trace already exists, ignore
 	    ?dbg("add_trace: trace ~p found.",[Trace]),
-	    TL;
+	    {ok, TL};
 	#trace_item {trace = Trace, lager_ref = LagerRef, client = _Other} ->
 	    %% Trace exists in lager, just add a post locally
 	    ?dbg("add_trace: trace ~p found for client ~p.",
 			[Trace, _Other]),
-	    [#trace_item {trace = Trace, lager_ref = LagerRef, client = Client}
-	     | TL]
+	    {ok, 
+	     [#trace_item {trace = Trace, lager_ref = LagerRef, client = Client}
+	      | TL]}
     end.
 
 %%--------------------------------------------------------------------
@@ -380,7 +415,7 @@ remove_trace(Trace, Client, TL) ->
 	false ->
 	    %% Ignore ??
 	    ?dbg("remove_trace: trace ~p not found in ~p.",[Trace, TL]),
-	    TL;
+	    {ok, TL};
 	{value, 
 	 #trace_item {trace = Trace, lager_ref = LagerRef, client = Client}, 
 	 Rest} ->
@@ -389,18 +424,24 @@ remove_trace(Trace, Client, TL) ->
 		false ->
 		    %% Last trace, remove in lager and locally
 		    ?dbg("remove_trace: last trace ~p found.",[Trace]),
-		    lager:stop_trace(LagerRef),
-		    Rest;
+		    case lager:stop_trace(LagerRef) of
+			ok ->
+			    {ok, Rest};
+			{error, _Reason} = E ->
+			    ?dbg("add_trace: lager call failed, reason ~p.",
+				 [_Reason]),
+			    {E, TL}
+		    end;
 		#trace_item {} ->
 		    %% We still need this trace in lager,
 		    %% only remove locally
 		    ?dbg("remove_trace: more traces ~p exist.",[Trace]),
-		    Rest
+		    {ok, Rest}
 	    end;
 	{value, #trace_item {trace = Trace, client = _Other}, _Rest} ->
 	    ?dbg("remove_trace: trace ~p found for client ~p.",
 			[Trace, _Other]),
-	    TL
+	    {ok, TL}
     end.
 
 %%--------------------------------------------------------------------

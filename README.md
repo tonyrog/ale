@@ -39,11 +39,11 @@ LogLevel is  debug | info | notice | warning | error | critical | alert |  emerg
 See lager documentations for more details.<br/>
 Examples:<br/>
 <code>
-ale:trace(on, sz_master, debug).
-ale:trace(on, self(), debug).
-ale:trace_gl(on, sz_node, info, "/tmp/ale.log").
-ale:trace(off, sz_master, debug)
-ale:trace(on, [{module, ale}, {function, start}], debug).
+ale:trace(on, sz_master, debug).<br/>
+ale:trace(on, self(), debug).<br/>
+ale:trace_gl(on, sz_node, info, "/tmp/ale.log").<br/>
+ale:trace(off, sz_master, debug)<br/>
+ale:trace(on, [{module, ale}, {function, start}], debug).<br/>
 </code>
 
 #### Config Files
@@ -52,10 +52,10 @@ Arguments to all applicable erlang applications are specified in an erlang confi
 Traces can be added to the ale part of the configuration file. These traces will be active as long as ale i running.<br/>
 Example:<br/>
 <code>
-	{init_traces, [
-		       {[{module, sz_master}], debug}, 
-		       {[{module, sz_node}], info, "/tmp/ale.log"}
-		      ]}
+	{init_traces, [<br/>
+		       {[{module, sz_master}], debug}, <br/>
+		       {[{module, sz_node}], info, "/tmp/ale.log"}<br/>
+		      ]}<br/>
 </code>
 
 An example can be found in ["sys.config"](https://github.com/tonyrog/ale/raw/master/sys.config).<br/>
