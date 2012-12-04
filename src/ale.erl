@@ -37,13 +37,14 @@
 -export([start/0,
 	 stop/0]).
 
-%% Application API
--export([trace/3]).
--export([trace_gl/3]).
--export([trace/4]).
--export([trace_gl/4]).
--export([traces/0]).
--export([clients/0]).
+%% Start/Stop traces
+-export([trace/3,
+	 trace_gl/3,
+	 trace/4,
+	 trace_gl/4]).
+
+%% Info requests
+-export([i/0]).
 
 -define(SRV, ale_srv).
 
@@ -211,25 +212,13 @@ call({trace, _OnOrOff, _FilterList, _Level, _Client, File} = Trace)
 
 %%--------------------------------------------------------------------
 %% @doc
-%% Lists existing traces.
+%% Lists existing traces and clients.
 %% @end
 %%--------------------------------------------------------------------
--spec traces() -> list(tuple()).
+-spec i() -> list(tuple()).
 
-traces() ->
-    gen_server:call(?SRV, traces).
-
-%%--------------------------------------------------------------------
-%% @doc
-%% Lists existing clients.
-%% @end
-%%--------------------------------------------------------------------
--spec clients() -> list(tuple()).
-
-clients() ->
-    gen_server:call(?SRV, clients).
-
-
+i() ->
+    gen_server:call(?SRV, i).
 
 %%--------------------------------------------------------------------
 %% Test functions

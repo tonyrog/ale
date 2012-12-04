@@ -43,10 +43,13 @@
 	 code_change/3]).
 
 %% Testing
--export([start/0, start/1]).
--export([dump/0]).
--export([debug/1]).
--export([clear/0]).
+-export([start/0, 
+	 start/1, 
+	 traces/0,
+	 clients/0,
+	 dump/0,
+	 debug/1,
+	 clear/0]).
 
 -record(trace_item,
 	{
@@ -102,6 +105,25 @@ stop() ->
     ?dbg("start_link: stopping",[]),
     gen_server:call(?MODULE, stop).
 
+%%--------------------------------------------------------------------
+%% @doc
+%% Lists existing traces.
+%% @end
+%%--------------------------------------------------------------------
+-spec traces() -> list(tuple()).
+
+traces() ->
+    gen_server:call(?MODULE, traces).
+
+%%--------------------------------------------------------------------
+%% @doc
+%% Lists existing clients.
+%% @end
+%%--------------------------------------------------------------------
+-spec clients() -> list(tuple()).
+
+clients() ->
+    gen_server:call(?MODULE, clients).
 
 
 %% Test functions
@@ -216,6 +238,7 @@ handle_call({trace, off, Filter, Level, Client, File} = _T, _From,
 	{E, TL} ->
 	    {reply, E, Ctx}
     end;
+
 handle_call(traces, _From,  Ctx=#ctx {trace_list = TL})  ->
     ?dbg("handle_call: traces.",[]),
     {reply, TL, Ctx};
@@ -224,11 +247,32 @@ handle_call(clients, _From,  Ctx=#ctx {client_list = CL})  ->
     ?dbg("handle_call: clients.",[]),
     {reply, CL, Ctx};
      
-handle_call(dump, _From, Ctx=#ctx {trace_list = TL}) ->
+handle_call(i, _From, Ctx=#ctx {trace_list = TL, client_list = CL}) ->
+    ?dbg("handle_call: i.",[]),
+    PrettyTraceList = {'Trace list:',
+	lists:map(
+	  fun(#trace_item {client = C, trace = {F, L, B}}) ->
+		  lists:flatten(
+		    io_lib:format(
+		      "Client ~p, filter ~p, level ~p, backend ~p.", 
+					      [C, F, L, B]))		  
+	  end, TL)},
+    PrettyClientList = {'Client list:',
+	lists:map(
+	  fun(#client_item {pid = P}) ->
+		  lists:flatten(io_lib:format("Client ~p.", [P]))
+	  end, CL)},
+    {reply, {PrettyTraceList, PrettyClientList}, Ctx};
+
+handle_call(dump, _From, Ctx=#ctx {trace_list = TL, client_list = CL}) ->
     lists:foreach(fun(#trace_item {client = C, trace = T, lager_ref = LR}) ->
-			  io:format("Client ~p, trace ~w, ref ~w.\n", 
+			  io:format("Client ~p, trace ~p, ref ~w.\n", 
 				    [C, T, LR])
 		  end, TL),
+    lists:foreach(fun(#client_item {pid = P, monitor = M}) ->
+			  io:format("Client ~p, monitor ~p.\n", 
+				    [P, M])
+		  end, CL),
     {reply, ok, Ctx};
 
 handle_call({debug, TrueOrFalse}, _From, Ctx=#ctx {debug = Dbg}) ->
@@ -382,7 +426,7 @@ add_trace(Trace = {Filter, Level, File}, Client, TL) ->
 		    {ok, 
 		     [#trace_item {trace = Trace,  
 				   lager_ref = LagerRef, 
-				  client = Client}
+				   client = Client}
 		      | TL]};
 		{error, _Reason}  = E->
 		    ?dbg("add_trace: lager call failed, reason ~p.",[_Reason]),

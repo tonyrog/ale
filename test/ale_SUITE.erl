@@ -166,7 +166,7 @@ start_with_it_console(_Config) ->
 				[{[{module, ale_SUITE}], debug}]}]),
     ok = ale_srv:dump(),
     [{trace_item, {[{module, ale_SUITE}], debug, console}, _LagRef, Pid}] = 
-	ale:traces(),
+	ale_srv:traces(),
     ok.
 
 
@@ -182,7 +182,7 @@ start_with_it_file(_Config) ->
 				[{[{module, ale_SUITE}], debug, "./ale.log"}]}]),
     ok = ale_srv:dump(),
     [{trace_item, {[{module, ale_SUITE}], debug, _File}, _LagRef, Pid}] = 
-	ale:traces(),
+	ale_srv:traces(),
     ok.
 
 %%--------------------------------------------------------------------
@@ -196,7 +196,7 @@ start_with_it_no_file(_Config) ->
     {ok, _Pid} = ale_srv:start([{init_traces, 
 				[{[{module, ale_SUITE}], debug, "./ale.log"}]}]),
     ok = ale_srv:dump(),
-    [] = ale:traces(),
+    [] = ale_srv:traces(),
     ok.
 
 
@@ -213,9 +213,9 @@ add_trace(_Config) ->
     ok = ale_srv:dump(),
     ok = ale:trace(on, ale_SUITE, debug),
     [{trace_item, {[{module, ale_SUITE}], debug, console}, _LagRef, Self}] = 
-	ale:traces(),
+	ale_srv:traces(),
     ok = ale:trace(off, ale_SUITE, debug),
-    [] = ale:traces(),
+    [] = ale_srv:traces(),
     ok.
 
 %%--------------------------------------------------------------------
@@ -231,9 +231,9 @@ add_trace_gl(_Config) ->
     ok = ale:trace_gl(on, ale_SUITE, info),
     ok = ale_srv:dump(),
     [{trace_item, {[{module, ale_SUITE}], info, console}, _LagRef, GL}] = 
-	ale:traces(),
+	ale_srv:traces(),
     ok = ale:trace_gl(off, ale_SUITE, info),
-    [] = ale:traces(),
+    [] = ale_srv:traces(),
     ok.
 
 
@@ -251,9 +251,9 @@ add_trace_pid(_Config) ->
     ok = ale:trace(on, Self, debug),
     ok = ale_srv:dump(),
     [{trace_item, {[{pid, SelfStr}], debug, console}, _LagRef, Self}] = 
-	ale:traces(),
+	ale_srv:traces(),
     ok = ale:trace(off, Self, debug),
-    [] = ale:traces(),
+    [] = ale_srv:traces(),
     ok.
 
 %%--------------------------------------------------------------------
@@ -269,10 +269,10 @@ add_trace_and_die(_Config) ->
     timer:sleep(100),
     ok = ale_srv:dump(),
     [{trace_item, {[{module, ale_SUITE}], debug, console}, _LagRef, TmpPid}] = 
-	ale:traces(),
+	ale_srv:traces(),
     TmpPid ! die,
     timer:sleep(100),
-    [] = ale:traces(),
+    [] = ale_srv:traces(),
     ok.
 
 trace_starter() ->
@@ -297,7 +297,7 @@ add_trace_wrong_level(_Config) ->
     {error, E} = ale:trace(on, ale_SUITE, wrong),
     ok = ale_srv:dump(),
     ct:pal("Error ~p", [E]),
-    [] = ale:traces(),
+    [] = ale_srv:traces(),
     ok.
 
 %%--------------------------------------------------------------------
@@ -312,7 +312,7 @@ remove_non_existing_trace(_Config) ->
     %% Is ok OK??
     ok = ale:trace(off, ale_SUITE, debug),
     ok = ale_srv:dump(),
-    [] = ale:traces(),
+    [] = ale_srv:traces(),
     ok.
 
 %%--------------------------------------------------------------------
