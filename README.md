@@ -60,6 +60,11 @@ Example:<br/>
 
 An example can be found in ["sys.config"](https://github.com/tonyrog/ale/raw/master/sys.config).<br/>
 
+
+#### Tips
+
+If you start traceing using the non-groupleader function calls from the shell you can stop it by 'crashing' the shell, for ex with A=B. Might be handy if you get more output than expected ;-)
+
 ### Building
 
 Rebar will compile all needed dependencies.<br/>
