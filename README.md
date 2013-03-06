@@ -121,9 +121,8 @@ And then you run:
 ```
 $ rebar generate
 ```
-.
 
-When generating a new release the old has to be (re)moved.
+Before generating a new version of a release the old version should be (re)moved.
 
 Start node:
 
