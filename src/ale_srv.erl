@@ -48,8 +48,7 @@
 	 traces/0,
 	 clients/0,
 	 dump/0,
-	 debug/1,
-	 clear/0]).
+	 debug/1]).
 
 -record(trace_item,
 	{
@@ -126,22 +125,22 @@ clients() ->
     gen_server:call(?MODULE, clients).
 
 
+%%--------------------------------------------------------------------
 %% Test functions
 %% @private
 start() ->
     start([]).
+%% @private
 start(Args) ->
     gen_server:start({local, ?MODULE}, ?MODULE, Args, []).
 
+%% @private
 dump() ->
     gen_server:call(?MODULE, dump).
 
+%% @private
 debug(TrueOrFalse) ->
     gen_server:call(?MODULE, {debug, TrueOrFalse}).
-
-clear() ->
-    gen_server:call(?MODULE, clear).
-
 
 %%--------------------------------------------------------------------
 %% @private

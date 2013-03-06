@@ -41,7 +41,12 @@
 -export([trace/3,
 	 trace_gl/3,
 	 trace/4,
-	 trace_gl/4]).
+	 trace_gl/4,
+         debug/1,
+         info/1,
+         warning/1,
+         error/1,
+	 clear/0]).
 
 %% Info requests
 -export([i/0]).
@@ -221,12 +226,88 @@ i() ->
     gen_server:call(?SRV, i).
 
 %%--------------------------------------------------------------------
+%% @doc
+%% Shortcut to trace(on, X, debug).
+%% For details see {@link trace/3}.
+%% @end
+%%--------------------------------------------------------------------
+-spec debug(ModuleOrPidOrFilter::atom() | 
+				 string() | 
+				 pid() | 
+				 tuple() | 
+				 list(tuple())) -> 
+		   ok | {error, Error::term()}.
+
+debug(ModulOrPidOrFilter) ->
+    trace(on, ModulOrPidOrFilter, debug, console).
+        
+%%--------------------------------------------------------------------
+%% @doc
+%% Shortcut to trace(on, X, info).
+%% For details see {@link trace/3}.
+%% @end
+%%--------------------------------------------------------------------
+-spec info(ModuleOrPidOrFilter::atom() | 
+				 string() | 
+				 pid() | 
+				 tuple() | 
+				 list(tuple())) -> 
+		   ok | {error, Error::term()}.
+
+info(ModulOrPidOrFilter) ->
+    trace(on, ModulOrPidOrFilter, info, console).
+        
+%%--------------------------------------------------------------------
+%% @doc
+%% Shortcut to trace(on, X, warning).
+%% For details see {@link trace/3}.
+%% @end
+%%--------------------------------------------------------------------
+-spec warning(ModuleOrPidOrFilter::atom() | 
+				 string() | 
+				 pid() | 
+				 tuple() | 
+				 list(tuple())) -> 
+		   ok | {error, Error::term()}.
+
+warning(ModulOrPidOrFilter) ->
+    trace(on, ModulOrPidOrFilter, warning, console).
+        
+%%--------------------------------------------------------------------
+%% @doc
+%% Shortcut to trace(on, X, error).
+%% For details see {@link trace/3}.
+%% @end
+%%--------------------------------------------------------------------
+-spec error(ModuleOrPidOrFilter::atom() | 
+				 string() | 
+				 pid() | 
+				 tuple() | 
+				 list(tuple())) -> 
+		   ok | {error, Error::term()}.
+
+error(ModulOrPidOrFilter) ->
+    trace(on, ModulOrPidOrFilter, error, console).
+        
+%%--------------------------------------------------------------------
+%% @doc
+%% Removes all traces.
+%% @end
+%%--------------------------------------------------------------------
+-spec clear() -> ok.
+
+clear() ->
+    gen_server:call(?SRV, clear).
+
+
+%%--------------------------------------------------------------------
 %% Test functions
 %%--------------------------------------------------------------------
 %% @private
 start() ->
     app_ctrl([kernel, stdlib, compiler, syntax_tools, sasl, lager, ale],start).
 
+%% @private
 stop() ->
     app_ctrl([ale, lager],stop).
 
