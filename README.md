@@ -26,7 +26,7 @@ $ git clone git://github.com/tonyrog/ale.git
 ### Functionality
 #### Concepts
 
-ale extends lager by using a server that keeps track of all trace request thus making it possible for several processes to add the same traces while only adding one to lager and likewise not removing it from lager until all processes have removed it..
+ale extends lager by using a server that keeps track of all trace request thus making it possible for several processes to add the same traces while only adding one to lager and likewise not removing it from lager until all processes have removed it.<br/>
 Available api is:
 <ul>
 <li> trace(on | off, ModuleOrPidOrFilter::atom() | pid() | tuple() | list(tuple)), Loglevel::atom()) - prints trace output on console as long as calling process hasn't terminated.</li>
@@ -46,6 +46,14 @@ ale:trace(off, sz_master, debug)<br/>
 ale:trace(on, [{module, ale}, {function, start}], debug).<br/>
 </code>
 
+There are also som shortcut functions:
+<ul>
+<li> debug(ModuleOrPidOrFilter::atom() | pid() | tuple() | list(tuple))) - calls trace(on, ModuleOrPidOrFilter, debug).</li>
+<li> info(ModuleOrPidOrFilter::atom() | pid() | tuple() | list(tuple))) - calls trace(on, ModuleOrPidOrFilter, info).</li>
+<li> error(ModuleOrPidOrFilter::atom() | pid() | tuple() | list(tuple))) - calls trace(on, ModuleOrPidOrFilter, error).</li>
+<li> warning(ModuleOrPidOrFilter::atom() | pid() | tuple() | list(tuple))) - calls trace(on, ModuleOrPidOrFilter, warning).</li>
+</ul>
+
 #### Config Files
 
 Arguments to all applicable erlang applications are specified in an erlang configuration file.<br/>
@@ -63,7 +71,7 @@ An example can be found in ["sys.config"](https://github.com/tonyrog/ale/raw/mas
 
 #### Tips
 
-If you start traceing using the non-groupleader function calls from the shell you can stop it by 'crashing' the shell, for ex with A=B. Might be handy if you get more output than expected ;-)
+If you start tracing using the non-groupleader function calls from the shell you can stop it by 'crashing' the shell, for ex with a=b. Might be handy if you get more output than expected ;-)
 
 ### Building
 
@@ -142,3 +150,4 @@ ale is documented using edoc. To generate the documentation do:
 $ cd ale
 $ rebar doc
 ```
+You get the resulting html-files in ale/doc subdirectory.
