@@ -46,13 +46,14 @@ ale:trace(off, sz_master, debug)<br/>
 ale:trace(on, [{module, ale}, {function, start}], debug).<br/>
 </code>
 
-There are also som shortcut functions:
+There are also some shortcut functions:
 <ul>
-<li> debug(ModuleOrPidOrFilter::atom() | pid() | tuple() | list(tuple))) - calls trace(on, ModuleOrPidOrFilter, debug).</li>
-<li> info(ModuleOrPidOrFilter::atom() | pid() | tuple() | list(tuple))) - calls trace(on, ModuleOrPidOrFilter, info).</li>
-<li> error(ModuleOrPidOrFilter::atom() | pid() | tuple() | list(tuple))) - calls trace(on, ModuleOrPidOrFilter, error).</li>
-<li> warning(ModuleOrPidOrFilter::atom() | pid() | tuple() | list(tuple))) - calls trace(on, ModuleOrPidOrFilter, warning).</li>
-</ul>
+<li> debug(ModuleOrPidOrList::atom() | pid() | tuple() | list(atom())) - calls trace(on, ModuleOrPidOrList, debug).</li>
+<li> info(ModuleOrPidOrList::atom() | pid() | tuple() | list(atom())) - calls trace(on, ModuleOrPidOrList, info).</li>
+<li> error(ModuleOrPidOrList::atom() | pid() | tuple() | list(atom())) - calls trace(on, ModuleOrPidOrList, error).</li>
+<li> warning(ModuleOrPidOrList::atom() | pid() | tuple() | list(atom())) - calls trace(on, ModuleOrPidOrList, warning).</li>
+</ul><br/>
+These can be called with lists of modules.
 
 #### Config Files
 

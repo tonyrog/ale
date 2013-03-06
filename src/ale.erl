@@ -229,69 +229,73 @@ i() ->
 %% @doc
 %% Shortcut to trace(on, X, debug).
 %% For details see {@link trace/3}.
+%% Can be called with a list of modules.
 %% @end
 %%--------------------------------------------------------------------
--spec debug(ModuleOrPidOrFilter::atom() | 
+-spec debug(ModuleOrPidOrList::atom() | 
 				 string() | 
 				 pid() | 
 				 tuple() | 
-				 list(tuple())) -> 
+				 list(atom())) -> 
 		   ok | {error, Error::term()}.
 
-debug(ModulOrPidOrFilter) ->
-    trace(on, ModulOrPidOrFilter, debug, console).
+debug(ModulOrPidOrList) ->
+    trace_i(ModulOrPidOrList, debug).
         
 %%--------------------------------------------------------------------
 %% @doc
 %% Shortcut to trace(on, X, info).
 %% For details see {@link trace/3}.
+%% Can be called with a list of modules.
 %% @end
 %%--------------------------------------------------------------------
--spec info(ModuleOrPidOrFilter::atom() | 
+-spec info(ModuleOrPidOrList::atom() | 
 				 string() | 
 				 pid() | 
 				 tuple() | 
-				 list(tuple())) -> 
+				 list(atom())) -> 
 		   ok | {error, Error::term()}.
 
-info(ModulOrPidOrFilter) ->
-    trace(on, ModulOrPidOrFilter, info, console).
+info(ModulOrPidOrList) ->
+    trace_i(ModulOrPidOrList, info).
         
 %%--------------------------------------------------------------------
 %% @doc
 %% Shortcut to trace(on, X, warning).
 %% For details see {@link trace/3}.
+%% Can be called with a list of modules.
 %% @end
 %%--------------------------------------------------------------------
--spec warning(ModuleOrPidOrFilter::atom() | 
+-spec warning(ModuleOrPidOrList::atom() | 
 				 string() | 
 				 pid() | 
 				 tuple() | 
-				 list(tuple())) -> 
+				 list(atom())) -> 
 		   ok | {error, Error::term()}.
 
-warning(ModulOrPidOrFilter) ->
-    trace(on, ModulOrPidOrFilter, warning, console).
+warning(ModulOrPidOrList) ->
+    trace_i(ModulOrPidOrList, warning).
         
 %%--------------------------------------------------------------------
 %% @doc
 %% Shortcut to trace(on, X, error).
 %% For details see {@link trace/3}.
+%% Can be called with a list of modules.
 %% @end
 %%--------------------------------------------------------------------
--spec error(ModuleOrPidOrFilter::atom() | 
+-spec error(ModuleOrPidOrList::atom() | 
 				 string() | 
 				 pid() | 
 				 tuple() | 
-				 list(tuple())) -> 
+				 list(atom())) -> 
 		   ok | {error, Error::term()}.
 
-error(ModulOrPidOrFilter) ->
-    trace(on, ModulOrPidOrFilter, error, console).
+error(ModulOrPidOrList) ->
+    trace_i(ModulOrPidOrList, error).
         
 %%--------------------------------------------------------------------
 %% @doc
-%% Removes all traces.
+%% Removes all traces for all clients.
 %% @end
 %%--------------------------------------------------------------------
 -spec clear() -> ok.
@@ -335,4 +339,14 @@ app_ctrl([App|Apps], F) ->
 	    Error
     end.
 
+%% @private
+trace_i(Module, Level) when is_atom(Module), is_atom(Level) ->
+    trace_i([Module], Level);
+trace_i([], _Level) ->
+    ok;
+trace_i([Module | Rest], Level) when is_atom(Module), is_atom(Level) ->
+    trace(on, Module, Level),
+    trace_i(Rest, Level);
+trace_i([Filter | _Rest] = FilterList, Level) when is_tuple(Filter), is_atom(Level) ->
+    trace(on, FilterList, Level).
 
