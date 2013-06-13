@@ -43,9 +43,13 @@
 	 trace/4,
 	 trace_gl/4,
          debug/1,
+	 debug_gl/1,
          info/1,
-         warning/1,
+	 info_gl/1,
+	 warning/1,
+	 warning_gl/1,
          error/1,
+	 error_gl/1,
 	 clear/0]).
 
 %% Info requests
@@ -244,6 +248,23 @@ debug(ModulOrPidOrList) ->
         
 %%--------------------------------------------------------------------
 %% @doc
+%% Shortcut to trace_gl(on, X, debug).
+%% For details see {@link trace/3}.
+%% Can be called with a list of modules.
+%% @end
+%%--------------------------------------------------------------------
+-spec debug_gl(ModuleOrPidOrList::atom() | 
+				  string() | 
+				  pid() | 
+				  tuple() | 
+				  list(atom())) -> 
+		   ok | {error, Error::term()}.
+
+debug_gl(ModulOrPidOrList) ->
+    trace_i(ModulOrPidOrList, debug, gl).
+        
+%%--------------------------------------------------------------------
+%% @doc
 %% Shortcut to trace(on, X, info).
 %% For details see {@link trace/3}.
 %% Can be called with a list of modules.
@@ -258,6 +279,23 @@ debug(ModulOrPidOrList) ->
 
 info(ModulOrPidOrList) ->
     trace_i(ModulOrPidOrList, info).
+%%--------------------------------------------------------------------
+%% @doc
+%% Shortcut to trace_gl(on, X, info).
+%% For details see {@link trace/3}.
+%% Can be called with a list of modules.
+%% @end
+%%--------------------------------------------------------------------
+-spec info_gl(ModuleOrPidOrList::atom() | 
+				 string() | 
+				 pid() | 
+				 tuple() | 
+				 list(atom())) -> 
+		   ok | {error, Error::term()}.
+
+info_gl(ModulOrPidOrList) ->
+    trace_i(ModulOrPidOrList, info, gl).
+        
         
 %%--------------------------------------------------------------------
 %% @doc
@@ -278,6 +316,23 @@ warning(ModulOrPidOrList) ->
         
 %%--------------------------------------------------------------------
 %% @doc
+%% Shortcut to trace_gl(on, X, warning).
+%% For details see {@link trace/3}.
+%% Can be called with a list of modules.
+%% @end
+%%--------------------------------------------------------------------
+-spec warning_gl(ModuleOrPidOrList::atom() | 
+				    string() | 
+				    pid() | 
+				    tuple() | 
+				    list(atom())) -> 
+			ok | {error, Error::term()}.
+
+warning_gl(ModulOrPidOrList) ->
+    trace_i(ModulOrPidOrList, warning, gl).
+        
+%%--------------------------------------------------------------------
+%% @doc
 %% Shortcut to trace(on, X, error).
 %% For details see {@link trace/3}.
 %% Can be called with a list of modules.
@@ -292,6 +347,23 @@ warning(ModulOrPidOrList) ->
 
 error(ModulOrPidOrList) ->
     trace_i(ModulOrPidOrList, error).
+        
+%%--------------------------------------------------------------------
+%% @doc
+%% Shortcut to trace_gl(on, X, error).
+%% For details see {@link trace/3}.
+%% Can be called with a list of modules.
+%% @end
+%%--------------------------------------------------------------------
+-spec error_gl(ModuleOrPidOrList::atom() | 
+				 string() | 
+				 pid() | 
+				 tuple() | 
+				 list(atom())) -> 
+		   ok | {error, Error::term()}.
+
+error_gl(ModulOrPidOrList) ->
+    trace_i(ModulOrPidOrList, error, gl).
         
 %%--------------------------------------------------------------------
 %% @doc
@@ -340,13 +412,26 @@ app_ctrl([App|Apps], F) ->
     end.
 
 %% @private
-trace_i(Module, Level) when is_atom(Module), is_atom(Level) ->
-    trace_i([Module], Level);
-trace_i([], _Level) ->
+trace_i(Module, Level) ->
+    trace_i(Module, Level, self).
+
+trace_i(Module, Level, Type) 
+  when is_atom(Module), is_atom(Level) ->
+    trace_i([Module], Level, Type);
+trace_i([], _Level, _Type) ->
     ok;
-trace_i([Module | Rest], Level) when is_atom(Module), is_atom(Level) ->
+trace_i([Module | Rest], Level, self) 
+  when is_atom(Module), is_atom(Level) ->
     trace(on, Module, Level),
-    trace_i(Rest, Level);
-trace_i([Filter | _Rest] = FilterList, Level) when is_tuple(Filter), is_atom(Level) ->
-    trace(on, FilterList, Level).
+    trace_i(Rest, Level, self);
+trace_i([Module | Rest], Level, gl) 
+  when is_atom(Module), is_atom(Level) ->
+    trace_gl(on, Module, Level),
+    trace_i(Rest, Level, gl);
+trace_i([Filter | _Rest] = FilterList, Level, self) 
+  when is_tuple(Filter), is_atom(Level) ->
+    trace(on, FilterList, Level);
+trace_i([Filter | _Rest] = FilterList, Level, gl) 
+  when is_tuple(Filter), is_atom(Level) ->
+    trace_gl(on, FilterList, Level).
 
