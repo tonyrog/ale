@@ -1,3 +1,4 @@
+%%% coding: latin-1
 %%%---- BEGIN COPYRIGHT --------------------------------------------------------
 %%%
 %%% Copyright (C) 2007 - 2012, Rogvall Invest AB, <tony@rogvall.se>
@@ -26,9 +27,6 @@
 -module(ale_srv).
 
 -behaviour(gen_server).
-
--include_lib("lager/include/log.hrl").
-
 
 %% API
 -export([start_link/1, 
@@ -70,9 +68,6 @@
 	  debug  %% Debug of own process
 	}).
 
--define(dbg(Format, Args),
- 	lager:debug("~s(~p): " ++ Format, [?MODULE, self() | Args])).
-
 %%--------------------------------------------------------------------
 %% @doc
 %% Starts the server that will keep track of traces.
@@ -84,7 +79,7 @@
 			{error, Error::term()}.
 
 start_link(Args) ->
-    ?dbg("start_link: starting, args ~p",[Args]),
+    lager:debug("starting, args ~p",[Args]),
     Opts = proplists:get_value(options, Args, []),    
     F =	case proplists:get_value(linked,Opts,true) of
 	    true -> start_link;
@@ -101,7 +96,7 @@ start_link(Args) ->
 -spec stop() -> ok | {error, Error::term()}.
 
 stop() ->
-    ?dbg("start_link: stopping",[]),
+    lager:debug("stopping",[]),
     gen_server:call(?MODULE, stop).
 
 %%--------------------------------------------------------------------
@@ -156,7 +151,7 @@ debug(TrueOrFalse) ->
 init(Args) ->
     Opts = proplists:get_value(options, Args, []),    
     {ok,Debug} = set_debug(proplists:get_value(debug, Opts, false), undefined),
-    ?dbg("init: args ~p",[Args]),
+    lager:debug("args ~p",[Args]),
     InitTraces = proplists:get_value(init_traces, Args, []),
     TL = 
 	lists:foldl(fun({Filter, Level}, TraceList) ->
@@ -218,7 +213,7 @@ init(Args) ->
 handle_call({trace, on, Filter, Level, Client, File} = _T, _From, 
 	    Ctx=#ctx {trace_list = TL, client_list = CL}) 
   when is_list(Filter) ->
-    ?dbg("handle_call: trace on ~p.",[_T]),
+    lager:debug("trace on ~p.",[_T]),
     case add_trace({Filter, Level, File}, Client, TL) of
 	{ok, NewTL} -> 
 	    NewCL = monitor_client(Client, CL),
@@ -229,7 +224,7 @@ handle_call({trace, on, Filter, Level, Client, File} = _T, _From,
 handle_call({trace, off, Filter, Level, Client, File} = _T, _From, 
 	    Ctx=#ctx {trace_list = TL, client_list = CL}) 
   when is_list(Filter) ->
-    ?dbg("handle_call: trace off ~p.",[_T]),
+    lager:debug("trace off ~p.",[_T]),
     case remove_trace({Filter, Level, File}, Client, TL) of
 	{ok, NewTL} -> 
 	    NewCL = demonitor_client(Client, NewTL, CL),
@@ -239,15 +234,15 @@ handle_call({trace, off, Filter, Level, Client, File} = _T, _From,
     end;
 
 handle_call(traces, _From,  Ctx=#ctx {trace_list = TL})  ->
-    ?dbg("handle_call: traces.",[]),
+    lager:debug("traces.",[]),
     {reply, TL, Ctx};
      
 handle_call(clients, _From,  Ctx=#ctx {client_list = CL})  ->
-    ?dbg("handle_call: clients.",[]),
+    lager:debug("clients.",[]),
     {reply, CL, Ctx};
      
 handle_call(i, _From, Ctx=#ctx {trace_list = TL, client_list = CL}) ->
-    ?dbg("handle_call: i.",[]),
+    lager:debug("i.",[]),
     PrettyTraceList = {'Trace list:',
 	lists:map(
 	  fun(#trace_item {client = C, trace = {F, L, B}}) ->
@@ -287,19 +282,19 @@ handle_call(clear, _From, Ctx=#ctx {trace_list = TL, client_list = CL}) ->
 			remove_trace(Trace, Client, TL),
 			Rest
 		end, [], TL),
-    ?dbg("clear: traces removed.",[]),
+    lager:debug("traces removed.",[]),
     lists:foreach(fun( #client_item {monitor = Mon}) ->
 			  erlang:demonitor(Mon, [flush])
 		  end, CL),
-    ?dbg("clear: clients removed.",[]),
+    lager:debug("clients removed.",[]),
     {reply, ok, Ctx#ctx {trace_list = [], client_list = []}};
 
 handle_call(stop, _From, Ctx) ->
-    ?dbg("handle_call: stop.",[]),
+    lager:debug("stop.",[]),
     {stop, normal, ok, Ctx};
 
 handle_call(_Request, _From, Ctx) ->
-    ?dbg("handle_call: unknown request ~p.", [_Request]),
+    lager:debug("unknown request ~p.", [_Request]),
     {reply, {error,bad_call}, Ctx}.
 
 %%--------------------------------------------------------------------
@@ -317,7 +312,7 @@ handle_call(_Request, _From, Ctx) ->
 			 {stop, Reason::term(), Ctx::#ctx{}}.
 
 handle_cast(_Msg, Ctx) ->
-    ?dbg("handle_cast: unknown msg ~p", [_Msg]),
+    lager:debug("unknown msg ~p", [_Msg]),
     {noreply, Ctx}.
 
 %%--------------------------------------------------------------------
@@ -338,25 +333,25 @@ handle_cast(_Msg, Ctx) ->
 
 handle_info({'DOWN', MonRef, process, _Pid, Reason}, 
 	    Ctx=#ctx {trace_list = TL, client_list = CL}) ->
-    ?dbg("handle_info: DOWN for process ~p received, reason ~p.", 
+    lager:debug("DOWN for process ~p received, reason ~p.", 
 	 [_Pid, Reason]),
     %% See if we have this client
     {NewCL, NewTL} =
 	case lists:keytake(MonRef, #client_item.monitor, CL) of
 	    false ->
 		%% Ignore
-		?dbg("handle_info: client not found.",[]), 
+		lager:debug("client not found.",[]), 
 		{CL, TL};
 	    {value, #client_item {pid = Pid}, Rest} ->
 		%% Remove all traces for this client
-		?dbg("handle_info: client found, removing traces.",[]), 
+		lager:debug("client found, removing traces.",[]), 
 		{Rest, remove_traces(Pid, TL, [])}
 		    
 	end,
     {noreply, Ctx#ctx {trace_list = NewTL, client_list = NewCL}};
 
 handle_info(_Info, Ctx) ->
-    ?dbg("handle_info: unknown info ~p received.", [_Info]),
+    lager:debug("unknown info ~p received.", [_Info]),
     {noreply, Ctx}.
 	
 %%--------------------------------------------------------------------
@@ -367,16 +362,16 @@ handle_info(_Info, Ctx) ->
 
 terminate(_Reason, 
 	  _Ctx=#ctx {trace_list = TL, client_list = CL, debug = Dbg}) ->
-    ?dbg("terminate: Reason = ~p.",[_Reason]),
+    lager:debug("Reason = ~p.",[_Reason]),
     lists:foldl(fun(#trace_item {trace = Trace, client = Client}, Rest) ->
 			remove_trace(Trace, Client, TL),
 			Rest
 		end, [], TL),
-    ?dbg("terminate: traces removed.",[]),
+    lager:debug("traces removed.",[]),
     lists:foreach(fun( #client_item {monitor = Mon}) ->
 			  erlang:demonitor(Mon, [flush])
 		  end, CL),
-    ?dbg("terminate: clients removed.",[]),
+    lager:debug("clients removed.",[]),
     stop_debug(Dbg),
     ok.
 
@@ -391,7 +386,7 @@ terminate(_Reason,
 			 {ok, NewCtx::#ctx{}}.
 
 code_change(_OldVsn, Ctx, _Extra) ->
-    ?dbg("code_change: old version ~p.",[_OldVsn]),
+    lager:debug("old version ~p.",[_OldVsn]),
     {ok, Ctx}.
 
 
@@ -407,11 +402,11 @@ code_change(_OldVsn, Ctx, _Extra) ->
 
 add_trace(Trace = {Filter, Level, File}, Client, TL) -> 
     %% See if we already are tracing this.
-    ?dbg("add_trace: trace ~p for client ~p",[Trace, Client]),
+    lager:debug("trace ~p for client ~p",[Trace, Client]),
     case lists:keyfind(Trace, #trace_item.trace, TL) of
 	false ->
 	    %% Create new trace in lager
-	    ?dbg("add_trace: trace ~p not found.",[Trace]),
+	    lager:debug("trace ~p not found.",[Trace]),
 	    Res = 
 		case File of
 		    console ->
@@ -421,23 +416,23 @@ add_trace(Trace = {Filter, Level, File}, Client, TL) ->
 		end,
 	    case Res of
 		{ok, LagerRef} ->
-		    ?dbg("add_trace: trace added in lager, ref ~p.",[LagerRef]),
+		    lager:debug("trace added in lager, ref ~p.",[LagerRef]),
 		    {ok, 
 		     [#trace_item {trace = Trace,  
 				   lager_ref = LagerRef, 
 				   client = Client}
 		      | TL]};
 		{error, _Reason}  = E->
-		    ?dbg("add_trace: lager call failed, reason ~p.",[_Reason]),
+		    lager:debug("lager call failed, reason ~p.",[_Reason]),
 		    {E, TL}
 	    end;
 	#trace_item {trace = Trace, client = Client} ->
 	    %% Trace already exists, ignore
-	    ?dbg("add_trace: trace ~p found.",[Trace]),
+	    lager:debug("trace ~p found.",[Trace]),
 	    {ok, TL};
 	#trace_item {trace = Trace, lager_ref = LagerRef, client = _Other} ->
 	    %% Trace exists in lager, just add a post locally
-	    ?dbg("add_trace: trace ~p found for client ~p.",
+	    lager:debug("trace ~p found for client ~p.",
 			[Trace, _Other]),
 	    {ok, 
 	     [#trace_item {trace = Trace, lager_ref = LagerRef, client = Client}
@@ -453,11 +448,11 @@ add_trace(Trace = {Filter, Level, File}, Client, TL) ->
 
 remove_trace(Trace, Client, TL) ->		
     %% See if we are tracing this.
-    ?dbg("remove_trace: trace ~p for client ~p.",[Trace, Client]),
+    lager:debug("trace ~p for client ~p.",[Trace, Client]),
     case lists:keytake(Trace, #trace_item.trace, TL) of
 	false ->
 	    %% Ignore ??
-	    ?dbg("remove_trace: trace ~p not found in ~p.",[Trace, TL]),
+	    lager:debug("trace ~p not found in ~p.",[Trace, TL]),
 	    {ok, TL};
 	{value, 
 	 #trace_item {trace = Trace, lager_ref = LagerRef, client = Client}, 
@@ -466,23 +461,23 @@ remove_trace(Trace, Client, TL) ->
 	    case lists:keyfind(Trace, #trace_item.trace, Rest) of
 		false ->
 		    %% Last trace, remove in lager and locally
-		    ?dbg("remove_trace: last trace ~p found.",[Trace]),
+		    lager:debug("last trace ~p found.",[Trace]),
 		    case lager:stop_trace(LagerRef) of
 			ok ->
 			    {ok, Rest};
 			{error, _Reason} = E ->
-			    ?dbg("add_trace: lager call failed, reason ~p.",
+			    lager:debug("lager call failed, reason ~p.",
 				 [_Reason]),
 			    {E, TL}
 		    end;
 		#trace_item {} ->
 		    %% We still need this trace in lager,
 		    %% only remove locally
-		    ?dbg("remove_trace: more traces ~p exist.",[Trace]),
+		    lager:debug("more traces ~p exist.",[Trace]),
 		    {ok, Rest}
 	    end;
 	{value, #trace_item {trace = Trace, client = _Other}, _Rest} ->
-	    ?dbg("remove_trace: trace ~p found for client ~p.",
+	    lager:debug("trace ~p found for client ~p.",
 			[Trace, _Other]),
 	    {ok, TL}
     end.
@@ -498,11 +493,11 @@ monitor_client(Client, CL) ->
     case lists:keyfind(Client, #client_item.pid, CL) of
 	false ->
 	    %% Monitor the client
-	    ?dbg("monitor_client: new client pid ~p.",[Client]),
+	    lager:debug("new client pid ~p.",[Client]),
 	    Mon = erlang:monitor(process, Client),
 	    [#client_item {pid = Client, monitor = Mon} | CL];
 	#client_item {pid = Client} ->
-	    ?dbg("monitor_client: old client pid ~p.",[Client]),
+	    lager:debug("old client pid ~p.",[Client]),
 	    CL
     end.
 
@@ -517,7 +512,7 @@ demonitor_client(Client, TL, CL) ->
     case lists:keytake(Client, #client_item.pid, CL) of
 	false ->
 	    %% Ignore
-	    ?dbg("demonitor_client: client pid ~p not found.",[Client]),
+	    lager:debug("client pid ~p not found.",[Client]),
 	    CL;
 	{value, #client_item {pid = Client, monitor = Mon}, Rest} ->
 	    %% See if this client has any traces left
@@ -525,14 +520,12 @@ demonitor_client(Client, TL, CL) ->
 		false ->
 		    %% No more traces
 		    %% Demonitor the client
-		    ?dbg("demonitor_client: last trace for client ~p.",
-				[Client]),
+		    lager:debug("last trace for client ~p.", [Client]),
 		    erlang:demonitor(Mon, [flush]),
 		    Rest;
 		#trace_item {} ->
 		    %% Continue monitoring
-		    ?dbg("demonitor_client: more traces for client ~p.",
-				[Client]),
+		    lager:debug("more traces for client ~p.", [Client]),
 		    CL
 	    end
     end.
@@ -545,7 +538,7 @@ demonitor_client(Client, TL, CL) ->
 		       list(tuple()).
 
 remove_traces(_Client, [], NewTL) ->
-    ?dbg("remove_traces: all traces for client ~p removed.",[_Client]),
+    lager:debug("all traces for client ~p removed.",[_Client]),
     NewTL;
 remove_traces(Client, 
 	      [#trace_item {trace = Trace, lager_ref = LagerRef, client = Client} 
@@ -554,20 +547,18 @@ remove_traces(Client,
     case lists:keytake(Trace, #trace_item.trace, RestTL) of
 	false ->
 	    %% Last trace, remove in lager and locally
-	    ?dbg("remove_traces:last trace for client ~p found.",
-			[Client]),
+	    lager:debug("last trace for client ~p found.", [Client]),
 	    lager:stop_trace(LagerRef),
 	    remove_traces(Client, RestTL, NewTL);
 	{value, _TraceItem, _RestOfRest} ->
 	    %% We still need this trace in lager,
 	    %% only remove locally
-	    ?dbg("remove_traces: more traces for client ~p found.",
-			[Client]),
+	    lager:debug("more traces for client ~p found.", [Client]),
 	    remove_traces(Client, RestTL, NewTL)
     end;
 remove_traces(Client, [Item | RestTL], NewTL) ->
     %% Not this client
-    ?dbg("remove_traces: traces for other client found.",[]),
+    lager:debug("traces for other client found.",[]),
     remove_traces(Client, RestTL, [Item | NewTL]).
 
 	

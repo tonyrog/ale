@@ -1,3 +1,4 @@
+%%% coding: latin-1
 %%%---- BEGIN COPYRIGHT --------------------------------------------------------
 %%%
 %%% Copyright (C) 2007 - 2012, Rogvall Invest AB, <tony@rogvall.se>
@@ -77,7 +78,7 @@
 		   {error, Reason::term()}.
 
 start(_StartType, _StartArgs) ->
-    error_logger:info_msg("~p: start: arguments ignored.\n", [?MODULE]),
+    lager:debug("arguments ignored.\n", []),
     Opts = case application:get_env(options) of
 	       undefined -> [];
 	       {ok, O} -> O
@@ -381,20 +382,42 @@ clear() ->
 %%--------------------------------------------------------------------
 %% @private
 start() ->
-    app_ctrl([kernel, stdlib, compiler, syntax_tools, sasl, lager, ale],start).
+    start_all(ale).
 
 %% @private
 stop() ->
-    app_ctrl([ale, lager],stop).
+    app_ctrl([ale, lager, goldrush],stop).
 
 %%--------------------------------------------------------------------
 %% Internal functions
 %%--------------------------------------------------------------------
 %% @private
+
+%% utility since application:ensure_all_started is not present in R15
+%% this must be used for now.
+start_all(App) when is_atom(App) ->
+    each_application_([App], []);
+start_all(Apps) when is_list(Apps) ->
+    each_application_(Apps, []).
+
+each_application_([App|Apps], Started) ->
+    case application:start(App) of
+	{error,{not_started,App1}} ->
+	    each_application_([App1,App|Apps],Started);
+	{error,{already_started,App}} ->
+	    each_application_(Apps,Started);
+	ok ->
+	    each_application_(Apps,[App|Started]);
+	Error ->
+	    Error
+    end;
+each_application_([], Started) ->
+    {ok, Started}.
+
 app_ctrl([], _F) ->
     ok;
 app_ctrl([App|Apps], F) ->
-    error_logger:info_msg("~p: ~p\n", [F,App]),
+    lager:debug("~p: ~p\n", [F,App]),
     case application:F(App) of
 	{error,{not_started,App1}} ->
 	    case F of

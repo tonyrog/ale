@@ -10,7 +10,6 @@
   {applications, [
                   kernel,
                   stdlib,
-		  sasl,
 		  lager
                  ]},
   {mod, { ale, []}},
