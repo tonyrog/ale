@@ -56,7 +56,7 @@
 			{error, Error::term()}.
 
 start_link(Args) ->
-    lager:debug("args = ~p\n", [?MODULE, Args]),
+    lager:debug("args = ~p\n", [Args]),
     try supervisor:start_link({local, ?MODULE}, ?MODULE, Args) of
 	{ok, Pid} ->
 	    {ok, Pid, {normal, Args}};
