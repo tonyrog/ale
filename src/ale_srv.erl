@@ -161,18 +161,10 @@ init(Args) ->
 			    TmpL;
 		       ({Filter, Level, File}, TraceList) ->
 			    %% Do we want this check ??
-			    case filelib:is_regular(File) of
-				true ->
-				    {_Result, TmpL} =
-					add_trace({Filter, Level, File},
-						  self(), TraceList),
-				    TmpL;
-				false ->
-				    error_logger:error_msg(
-				      "ale: non existing file ~p, " ++
-				      "no trace added.~n", [File]),
-				    TraceList
-			    end
+			    {_Result, TmpL} =
+				add_trace({Filter, Level, File},
+					  self(), TraceList),
+			    TmpL
 		    end,
 		    [], InitTraces),
     {ok,  #ctx {debug = Debug, trace_list = TL}}.
@@ -412,7 +404,7 @@ add_trace(Trace = {Filter, Level, File}, Client, TL) ->
 		    console ->
 			lager:trace_console(Filter, Level);
 		    _F ->
-			lager:trace_file(File, Filter,Level)
+			lager:trace_file(File, Filter, Level)
 		end,
 	    case Res of
 		{ok, LagerRef} ->
