@@ -212,13 +212,8 @@ call({trace, _OnOrOff, _FilterList, _Level, _Client, console} = Trace) ->
     gen_server:call(?SRV, Trace);
 call({trace, _OnOrOff, _FilterList, _Level, _Client, File} = Trace) 
   when is_list(File) ->
-    %% Do we want this check ??
-    case filelib:is_regular(File) of
-	true ->
-	    gen_server:call(?SRV, Trace);
-	false ->
-	    {error, non_existing_file}
-    end.
+    %% Do we want to check file existence??
+    gen_server:call(?SRV, Trace).
 
 %%--------------------------------------------------------------------
 %% @doc
