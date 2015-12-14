@@ -41,13 +41,13 @@ LogLevel is  debug | info | notice | warning | error | critical | alert |  emerg
 File is relative to lagers log_root if given.<br/>
 See lager documentations for more details.<br/>
 Examples:<br/>
-<code>
-ale:trace(on, sz_master, debug).<br/>
-ale:trace(on, self(), debug).<br/>
-ale:trace_gl(on, sz_node, info, "/tmp/ale.log").<br/>
-ale:trace(off, sz_master, debug)<br/>
-ale:trace(on, [{module, ale}, {function, start}], debug).<br/>
-</code>
+```
+    ale:trace(on, sz_master, debug).
+    ale:trace(on, self(), debug).
+    ale:trace_gl(on, sz_node, info, "/tmp/ale.log").
+    ale:trace(off, sz_master, debug).
+    ale:trace(on, [{module, ale}, {function, start}], debug).
+```
 
 There are also some shortcut functions:
 <ul>
@@ -60,7 +60,7 @@ There are also some shortcut functions:
 <li> xxx_gl(ModuleOrPidOrList::atom() | pid() | tuple() | list(atom()), File::string()) - calls trace_gl(on, ModuleOrPidOrList, xxx, File) for xxx = debug | info | error | warning.</li>
 <li> xxxf(ModuleOrPidOrList::atom() | pid() | tuple() | list(atom())) - calls trace(on, ModuleOrPidOrList, xxx, default) for xxx = debug | info | error | warning. Default trace file can be set using trace_file/1.</li>
 <li> xxxf_gl(ModuleOrPidOrList::atom() | pid() | tuple() | list(atom())) - calls trace_gl(on, ModuleOrPidOrList, xxx, default) for xxx = debug | info | error | warning. Default trace file can be set using trace_file/1.</li>
-</ul><br/>
+</ul>
 These can be called with lists of modules.
 
 #### Config Files
@@ -68,12 +68,12 @@ These can be called with lists of modules.
 Arguments to all applicable erlang applications are specified in an erlang configuration file.<br/>
 Traces can be added to the ale part of the configuration file. These traces will be active as long as ale i running.<br/>
 Example:<br/>
-<code>
-	{traces, [<br/>
-	          {[{module, sz_master}], debug}, <br/>
-		  {[{module, sz_node}], info, "/tmp/ale.log"}<br/>
-		 ]}<br/>
-</code>
+```
+	{traces, [
+	          {[{module, sz_master}], debug}, 
+		  {[{module, sz_node}], info, "/tmp/ale.log"}
+		 ]}
+```
 
 An example can be found in ["sys.config"](https://github.com/tonyrog/ale/raw/master/sys.config).<br/>
 
@@ -140,15 +140,7 @@ $ cd rel
 $ ale/bin/ale start
 ```
 
-(If you want to have access to the erlang node use 
-``` 
-console 
-```
-instead of 
-``` 
-start
-```
-.)
+(If you want to have access to the erlang node use ``` console ``` instead of ``` start```.)
 
 ### Documentation
 
