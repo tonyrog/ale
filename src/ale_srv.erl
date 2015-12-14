@@ -1,7 +1,7 @@
 %%% coding: latin-1
 %%%---- BEGIN COPYRIGHT --------------------------------------------------------
 %%%
-%%% Copyright (C) 2007 - 2012, Rogvall Invest AB, <tony@rogvall.se>
+%%% Copyright (C) 2007 - 2015, Rogvall Invest AB, <tony@rogvall.se>
 %%%
 %%% This software is licensed as described in the file COPYRIGHT, which
 %%% you should have received as part of this distribution. The terms
@@ -17,7 +17,7 @@
 %%%---- END COPYRIGHT ----------------------------------------------------------
 %%%-------------------------------------------------------------------
 %%% @author Malotte Westman Lönne <malotte@malotte.net>
-%%% @copyright (C) 2012, Tony Rogvall
+%%% @copyright (C) 2015, Tony Rogvall
 %%% @doc
 %%%  ale server.
 %%%
