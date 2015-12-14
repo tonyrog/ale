@@ -45,27 +45,27 @@
 	 start/1, 
 	 traces/0,
 	 clients/0,
-	 dump/0,
-	 debug/1]).
+	 dump/0]).
 
 -record(trace_item,
 	{
-	  trace,
-	  lager_ref,
-	  client
+	  trace ::term(),
+	  lager_ref ::term(),
+	  client::pid()
 	}).
 
 -record(client_item,
 	{
-	  pid,
-	  monitor
+	  pid::pid(),
+	  monitor::reference()
 	}).
 
 -record(ctx,
 	{
-	  trace_list = [],
-	  client_list = [],
-	  debug  %% Debug of own process
+	  trace_file = "" ::string(),
+	  trace_options = [] ::list(),
+	  trace_list = [] ::list(),
+	  client_list = [] ::list()
 	}).
 
 %%--------------------------------------------------------------------
@@ -78,8 +78,10 @@
 			ignore | 
 			{error, Error::term()}.
 
-start_link(Args) ->
+start_link(Args0) ->
+    Args = Args0 ++ application:get_all_env(ale),
     lager:debug("starting, args ~p",[Args]),
+    %%lager:set_loglevel(lager_console_backend, info),
     Opts = proplists:get_value(options, Args, []),    
     F =	case proplists:get_value(linked,Opts,true) of
 	    true -> start_link;
@@ -133,10 +135,6 @@ start(Args) ->
 dump() ->
     gen_server:call(?MODULE, dump).
 
-%% @private
-debug(TrueOrFalse) ->
-    gen_server:call(?MODULE, {debug, TrueOrFalse}).
-
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -149,25 +147,30 @@ debug(TrueOrFalse) ->
 		  {stop, Reason::term()}.
 
 init(Args) ->
-    Opts = proplists:get_value(options, Args, []),    
-    {ok,Debug} = set_debug(proplists:get_value(debug, Opts, false), undefined),
     lager:debug("args ~p",[Args]),
-    InitTraces = proplists:get_value(init_traces, Args, []),
+    TF = proplists:get_value(trace_file, Args, "trace.log"),
+    InitTraces = proplists:get_value(init_traces, Args, []) ++
+	proplists:get_value(traces, Args, []),
+    TO = proplists:get_value(trace_options, Args, []),
     TL = 
 	lists:foldl(fun({Filter, Level}, TraceList) ->
 			    {_Result, TmpL} =
 				add_trace({Filter, Level, console},
-					  self(), TraceList),
+					  self(), TO, TraceList),
+			    TmpL;
+		       ({Filter, Level, default}, TraceList) ->
+			    {_Result, TmpL} =
+				add_trace({Filter, Level, TF},
+					  self(), TO, TraceList),
 			    TmpL;
 		       ({Filter, Level, File}, TraceList) ->
-			    %% Do we want this check ??
 			    {_Result, TmpL} =
 				add_trace({Filter, Level, File},
-					  self(), TraceList),
+					  self(), TO, TraceList),
 			    TmpL
 		    end,
 		    [], InitTraces),
-    {ok,  #ctx {debug = Debug, trace_list = TL}}.
+    {ok,  #ctx {trace_list = TL, trace_file = TF, trace_options = TO}}.
 
 
 %%--------------------------------------------------------------------
@@ -190,7 +193,6 @@ init(Args) ->
 	 Level::atom(), 
 	 Pid::pid()} |
 	dump |
-	{debug, TrueOrFalse::boolean()} |
 	clear |
 	stop.
 
@@ -202,17 +204,41 @@ init(Args) ->
 			 {stop, Reason::atom(), Reply::term(), Ctx::#ctx{}}.
 
 
-handle_call({trace, on, Filter, Level, Client, File} = _T, _From, 
-	    Ctx=#ctx {trace_list = TL, client_list = CL}) 
+handle_call({trace, on, Filter, Level, Client, default} = _T, _From, 
+	    Ctx=#ctx {trace_list = TL, client_list = CL, 
+		      trace_file = TF, trace_options = TO}) 
   when is_list(Filter) ->
     lager:debug("trace on ~p.",[_T]),
-    case add_trace({Filter, Level, File}, Client, TL) of
+    case add_trace({Filter, Level, TF}, Client, TO, TL) of
 	{ok, NewTL} -> 
 	    NewCL = monitor_client(Client, CL),
 	    {reply, ok, Ctx#ctx {trace_list = NewTL, client_list = NewCL}};
 	{Error, TL} ->
 	    {reply, Error, Ctx}
     end;
+handle_call({trace, on, Filter, Level, Client, File} = _T, _From, 
+	    Ctx=#ctx {trace_list = TL, client_list = CL, trace_options = TO}) 
+  when is_list(Filter) ->
+    lager:debug("trace on ~p.",[_T]),
+    case add_trace({Filter, Level, File}, Client, TO, TL) of
+	{ok, NewTL} -> 
+	    NewCL = monitor_client(Client, CL),
+	    {reply, ok, Ctx#ctx {trace_list = NewTL, client_list = NewCL}};
+	{Error, TL} ->
+	    {reply, Error, Ctx}
+    end;
+handle_call({trace, off, Filter, Level, Client, default} = _T, _From, 
+	    Ctx=#ctx {trace_list = TL, client_list = CL, trace_file = TF}) 
+  when is_list(Filter) ->
+    lager:debug("trace off ~p.",[_T]),
+    case remove_trace({Filter, Level, TF}, Client, TL) of
+	{ok, NewTL} -> 
+	    NewCL = demonitor_client(Client, NewTL, CL),
+	    {reply, ok, Ctx#ctx {trace_list = NewTL, client_list = NewCL}};
+	{E, TL} ->
+	    {reply, E, Ctx}
+    end;
+
 handle_call({trace, off, Filter, Level, Client, File} = _T, _From, 
 	    Ctx=#ctx {trace_list = TL, client_list = CL}) 
   when is_list(Filter) ->
@@ -261,14 +287,6 @@ handle_call(dump, _From, Ctx=#ctx {trace_list = TL, client_list = CL}) ->
 		  end, CL),
     {reply, ok, Ctx};
 
-handle_call({debug, TrueOrFalse}, _From, Ctx=#ctx {debug = Dbg}) ->
-    case set_debug(TrueOrFalse, Dbg) of
-	{ok, NewDbg} ->
-	    {reply, ok, Ctx#ctx { debug = NewDbg }};
-	Error ->
-	    {reply, Error, Ctx}
-    end;
-
 handle_call(clear, _From, Ctx=#ctx {trace_list = TL, client_list = CL}) ->
     lists:foldl(fun(#trace_item {trace = Trace, client = Client}, Rest) ->
 			remove_trace(Trace, Client, TL),
@@ -284,6 +302,14 @@ handle_call(clear, _From, Ctx=#ctx {trace_list = TL, client_list = CL}) ->
 handle_call(stop, _From, Ctx) ->
     lager:debug("stop.",[]),
     {stop, normal, ok, Ctx};
+
+handle_call(trace_file, _From, Ctx=#ctx {trace_file = File}) ->
+    lager:debug("trace_file.",[]),
+    {reply, {ok, File}, Ctx};
+
+handle_call({trace_file, File} = _Req, _From, Ctx) ->
+    lager:debug("~p",[_Req]),
+    {reply, ok, Ctx#ctx {trace_file = File}};
 
 handle_call(_Request, _From, Ctx) ->
     lager:debug("unknown request ~p.", [_Request]),
@@ -353,7 +379,7 @@ handle_info(_Info, Ctx) ->
 		       no_return().
 
 terminate(_Reason, 
-	  _Ctx=#ctx {trace_list = TL, client_list = CL, debug = Dbg}) ->
+	  _Ctx=#ctx {trace_list = TL, client_list = CL}) ->
     lager:debug("Reason = ~p.",[_Reason]),
     lists:foldl(fun(#trace_item {trace = Trace, client = Client}, Rest) ->
 			remove_trace(Trace, Client, TL),
@@ -364,7 +390,6 @@ terminate(_Reason,
 			  erlang:demonitor(Mon, [flush])
 		  end, CL),
     lager:debug("clients removed.",[]),
-    stop_debug(Dbg),
     ok.
 
 %%--------------------------------------------------------------------
@@ -389,10 +414,10 @@ code_change(_OldVsn, Ctx, _Extra) ->
 %% @private
 %%--------------------------------------------------------------------
 -spec add_trace({Filter::term(), Level::atom(), File::string() | console},
-		Client::pid(), TL::list(tuple())) ->
+		Client::pid(), TO::list(tuple()), TL::list(tuple())) ->
 		       list(tuple()).
 
-add_trace(Trace = {Filter, Level, File}, Client, TL) -> 
+add_trace(Trace = {Filter, Level, File}, Client, TO, TL) -> 
     %% See if we already are tracing this.
     lager:debug("trace ~p for client ~p",[Trace, Client]),
     case lists:keyfind(Trace, #trace_item.trace, TL) of
@@ -404,7 +429,7 @@ add_trace(Trace = {Filter, Level, File}, Client, TL) ->
 		    console ->
 			lager:trace_console(Filter, Level);
 		    _F ->
-			lager:trace_file(File, Filter, Level)
+			lager:trace_file(File, Filter, Level, TO)
 		end,
 	    case Res of
 		{ok, LagerRef} ->
@@ -552,22 +577,4 @@ remove_traces(Client, [Item | RestTL], NewTL) ->
     %% Not this client
     lager:debug("traces for other client found.",[]),
     remove_traces(Client, RestTL, [Item | NewTL]).
-
-	
-%% Internal debugging		     
-stop_debug(undefined) ->
-    undefined;
-stop_debug(Dbg) ->
-    lager:stop_trace(Dbg),
-    undefined.
-
-%% enable/disable module debug 
-set_debug(false, Dbg) ->
-    NewDbg = stop_debug(Dbg),
-    lager:set_loglevel(lager_console_backend, info),
-    {ok, NewDbg};
-set_debug(true, undefined) ->
-    lager:trace_console([{module,?MODULE}], debug);
-set_debug(true, Dbg) -> 
-    {ok, Dbg}.
 

@@ -30,12 +30,15 @@ ale extends lager by using a server that keeps track of all trace request thus m
 Available api is:
 <ul>
 <li> trace(on | off, ModuleOrPidOrFilter::atom() | pid() | tuple() | list(tuple)), Loglevel::atom()) - prints trace output on console as long as calling process hasn't terminated.</li>
-<li> trace(on | off, ModuleOrPidOrFilter::atom() | pid() | tuple() | list(tuple)), Loglevel::atom(), File::string()) - prints trace output to File as long as calling process hasn't terminated. File must exist.</li>
+<li> trace(on | off, ModuleOrPidOrFilter::atom() | pid() | tuple() | list(tuple)), Loglevel::atom(), File::string()) - prints trace output to File as long as calling process hasn't terminated.</li>
 <li> trace_gl(on | off, ModuleOrPidOrFilter::atom() | pid() | tuple() | list(tuple)), Loglevel::atom()) - prints trace output on console as long as calling process' group leader hasn't terminated. Suitable for calls from a shell.</li>
-<li> trace_gl(on | off, ModuleOrPidOrFilter::atom() | pid() | tuple() | list(tuple)), Loglevel::atom(), File::string()) - prints trace output to File as long as calling process' group leader hasn't terminated. Suitable for calls from a shell. File must exist.</li>
+<li> trace_gl(on | off, ModuleOrPidOrFilter::atom() | pid() | tuple() | list(tuple)), Loglevel::atom(), File::string()) - prints trace output to File as long as calling process' group leader hasn't terminated. Suitable for calls from a shell. </li>
+<li>trace_file() - returns the default trace file.</li>
+<li>trace_file(File::string()) - sets the default trace file.</li>
 </ul>
 Filter is a tuple {tag, Tag} that lager uses to determine what to output. <br/>
 LogLevel is  debug | info | notice | warning | error | critical | alert |  emergency. <br/>
+File is relative to lagers log_root if given.<br/>
 See lager documentations for more details.<br/>
 Examples:<br/>
 <code>
@@ -50,8 +53,13 @@ There are also some shortcut functions:
 <ul>
 <li> debug(ModuleOrPidOrList::atom() | pid() | tuple() | list(atom())) - calls trace(on, ModuleOrPidOrList, debug).</li>
 <li> info(ModuleOrPidOrList::atom() | pid() | tuple() | list(atom())) - calls trace(on, ModuleOrPidOrList, info).</li>
-<li> error(ModuleOrPidOrList::atom() | pid() | tuple() | list(atom())) - calls trace(on, ModuleOrPidOrList, error).</li>
 <li> warning(ModuleOrPidOrList::atom() | pid() | tuple() | list(atom())) - calls trace(on, ModuleOrPidOrList, warning).</li>
+<li> error(ModuleOrPidOrList::atom() | pid() | tuple() | list(atom())) - calls trace(on, ModuleOrPidOrList, error).</li>
+<li> xxx_gl(ModuleOrPidOrList::atom() | pid() | tuple() | list(atom())) - calls trace_gl(on, ModuleOrPidOrList, xxx) for xxx = debug | info | error | warning.</li>
+<li> xxx(ModuleOrPidOrList::atom() | pid() | tuple() | list(atom()), File::string()) - calls trace(on, ModuleOrPidOrList, xxx, File) for xxx = debug | info | error | warning.</li>
+<li> xxx_gl(ModuleOrPidOrList::atom() | pid() | tuple() | list(atom()), File::string()) - calls trace_gl(on, ModuleOrPidOrList, xxx, File) for xxx = debug | info | error | warning.</li>
+<li> xxxf(ModuleOrPidOrList::atom() | pid() | tuple() | list(atom())) - calls trace(on, ModuleOrPidOrList, xxx, default) for xxx = debug | info | error | warning. Default trace file can be set using trace_file/1.</li>
+<li> xxxf_gl(ModuleOrPidOrList::atom() | pid() | tuple() | list(atom())) - calls trace_gl(on, ModuleOrPidOrList, xxx, default) for xxx = debug | info | error | warning. Default trace file can be set using trace_file/1.</li>
 </ul><br/>
 These can be called with lists of modules.
 
@@ -61,10 +69,10 @@ Arguments to all applicable erlang applications are specified in an erlang confi
 Traces can be added to the ale part of the configuration file. These traces will be active as long as ale i running.<br/>
 Example:<br/>
 <code>
-	{init_traces, [<br/>
-		       {[{module, sz_master}], debug}, <br/>
-		       {[{module, sz_node}], info, "/tmp/ale.log"}<br/>
-		      ]}<br/>
+	{traces, [<br/>
+	          {[{module, sz_master}], debug}, <br/>
+		  {[{module, sz_node}], info, "/tmp/ale.log"}<br/>
+		 ]}<br/>
 </code>
 
 An example can be found in ["sys.config"](https://github.com/tonyrog/ale/raw/master/sys.config).<br/>
