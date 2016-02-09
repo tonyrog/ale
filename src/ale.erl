@@ -669,7 +669,7 @@ trace_file(File) ->
 %%--------------------------------------------------------------------
 %% @private
 start() ->
-    start_all(ale).
+    app_ctrl([ale], start).
 
 %% @private
 stop() ->
@@ -679,27 +679,6 @@ stop() ->
 %% Internal functions
 %%--------------------------------------------------------------------
 %% @private
-
-%% utility since application:ensure_all_started is not present in R15
-%% this must be used for now.
-start_all(App) when is_atom(App) ->
-    each_application_([App], []);
-start_all(Apps) when is_list(Apps) ->
-    each_application_(Apps, []).
-
-each_application_([App|Apps], Started) ->
-    case application:start(App) of
-	{error,{not_started,App1}} ->
-	    each_application_([App1,App|Apps],Started);
-	{error,{already_started,App}} ->
-	    each_application_(Apps,Started);
-	ok ->
-	    each_application_(Apps,[App|Started]);
-	Error ->
-	    Error
-    end;
-each_application_([], Started) ->
-    {ok, Started}.
 
 app_ctrl([], _F) ->
     ok;

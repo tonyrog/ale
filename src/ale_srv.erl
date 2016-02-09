@@ -415,7 +415,7 @@ code_change(_OldVsn, Ctx, _Extra) ->
 %%--------------------------------------------------------------------
 -spec add_trace({Filter::term(), Level::atom(), File::string() | console},
 		Client::pid(), TO::list(tuple()), TL::list(tuple())) ->
-		       list(tuple()).
+		       {'ok' | {'error',Error::term()}, list(tuple())}.
 
 add_trace(Trace = {Filter, Level, File}, Client, TO, TL) -> 
     %% See if we already are tracing this.
@@ -461,7 +461,7 @@ add_trace(Trace = {Filter, Level, File}, Client, TO, TL) ->
 %%--------------------------------------------------------------------
 -spec remove_trace({Filter::term(), Level::atom(), File::string()},
 		Client::pid(), TL::list(tuple())) ->
-		       list(tuple()).
+		       {'ok' | {'error',Error::term()}, list(tuple())}.
 
 remove_trace(Trace, Client, TL) ->		
     %% See if we are tracing this.
