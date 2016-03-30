@@ -414,8 +414,8 @@ code_change(_OldVsn, Ctx, _Extra) ->
 %% @private
 %%--------------------------------------------------------------------
 -spec add_trace({Filter::term(), Level::atom(), File::string() | console},
-		Client::pid(), TO::list(tuple()), TL::list(tuple())) ->
-		       {'ok' | {'error',Error::term()}, list(tuple())}.
+		Client::pid(), TO::list(tuple()), TL::list(#trace_item{})) ->
+		       {'ok' | {'error',Error::term()}, list(#trace_item{})}.
 
 add_trace(Trace = {Filter, Level, File}, Client, TO, TL) -> 
     %% See if we already are tracing this.
@@ -460,8 +460,8 @@ add_trace(Trace = {Filter, Level, File}, Client, TO, TL) ->
 %% @private
 %%--------------------------------------------------------------------
 -spec remove_trace({Filter::term(), Level::atom(), File::string()},
-		Client::pid(), TL::list(tuple())) ->
-		       {'ok' | {'error',Error::term()}, list(tuple())}.
+		   Client::pid(), TL::list(#trace_item{})) ->
+			  {'ok' | {'error',Error::term()}, list(#trace_item{})}.
 
 remove_trace(Trace, Client, TL) ->		
     %% See if we are tracing this.
@@ -502,8 +502,8 @@ remove_trace(Trace, Client, TL) ->
 %%--------------------------------------------------------------------
 %% @private
 %%--------------------------------------------------------------------
--spec monitor_client(Client::pid(), CL::list(pid())) ->
-		       list(pid()).
+-spec monitor_client(Client::pid(), CL::list(#client_item{})) ->
+		       list(#client_item{}).
 
 monitor_client(Client, CL) ->		
     %% See if we already have this client
@@ -521,8 +521,8 @@ monitor_client(Client, CL) ->
 %%--------------------------------------------------------------------
 %% @private
 %%--------------------------------------------------------------------
--spec demonitor_client(Client::pid(), CL::list(pid()), TL::list(tuple())) ->
-		       list(pid()).
+-spec demonitor_client(Client::pid(), TL::list(tuple()), CL::list(#client_item{})) ->
+		       list(#client_item{}).
 
 demonitor_client(Client, TL, CL) -> 
     %% See if we have this client
@@ -551,8 +551,8 @@ demonitor_client(Client, TL, CL) ->
 %%--------------------------------------------------------------------
 %% @private
 %%--------------------------------------------------------------------
--spec remove_traces(Client::pid(), TL::list(tuple()), NewTL::list(tuple())) ->
-		       list(tuple()).
+-spec remove_traces(Client::pid(), TL::list(#trace_item{}), Acc::list(#trace_item{})) ->
+		       list(#trace_item{}).
 
 remove_traces(_Client, [], NewTL) ->
     lager:debug("all traces for client ~p removed.",[_Client]),
