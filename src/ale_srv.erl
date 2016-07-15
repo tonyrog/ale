@@ -423,7 +423,7 @@ add_trace(Trace = {Filter, Level, File}, Client, TO, TL) ->
     case lists:keyfind(Trace, #trace_item.trace, TL) of
 	false ->
 	    %% Create new trace in lager
-	    lager:debug("trace ~p not found.",[Trace]),
+	    lager:debug("trace ~p not already existing.",[Trace]),
 	    Res = 
 		case File of
 		    console ->
