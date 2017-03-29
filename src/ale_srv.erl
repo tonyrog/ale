@@ -423,15 +423,8 @@ add_trace(Trace = {Filter, Level, File}, Client, TO, TL) ->
     case lists:keyfind(Trace, #trace_item.trace, TL) of
 	false ->
 	    %% Create new trace in lager
-	    lager:debug("trace ~p not already existing.",[Trace]),
-	    Res = 
-		case File of
-		    console ->
-			lager:trace_console(Filter, Level);
-		    _F ->
-			lager:trace_file(File, Filter, Level, TO)
-		end,
-	    case Res of
+	    lager:debug("new trace ~p.",[Trace]),
+	    try add_trace_in_lager(Filter, Level, File, TO) of
 		{ok, LagerRef} ->
 		    lager:debug("trace added in lager, ref ~p.",[LagerRef]),
 		    {ok, 
@@ -442,6 +435,11 @@ add_trace(Trace = {Filter, Level, File}, Client, TO, TL) ->
 		{error, _Reason}  = E->
 		    lager:debug("lager call failed, reason ~p.",[_Reason]),
 		    {E, TL}
+	    catch
+		_T:E ->
+		    lager:debug("lager call crashed, reason ~p:~p.",
+				[_T,E]),
+		    {{error, E}, TL}
 	    end;
 	#trace_item {trace = Trace, client = Client} ->
 	    %% Trace already exists, ignore
@@ -455,6 +453,11 @@ add_trace(Trace = {Filter, Level, File}, Client, TO, TL) ->
 	     [#trace_item {trace = Trace, lager_ref = LagerRef, client = Client}
 	      | TL]}
     end.
+
+add_trace_in_lager(Filter, Level, console, _TO) ->
+    lager:trace_console(Filter, Level);
+add_trace_in_lager(Filter, Level, File, TO) ->
+    lager:trace_file(File, Filter, Level, TO).
 
 %%--------------------------------------------------------------------
 %% @private
